@@ -51,7 +51,7 @@ This repository provides a complete trading strategy development environment wit
 
 ## Backtesting
 
-For comprehensive strategy testing and optimization, see the detailed methodology in [aia backtesting.pdf](aia%20backtesting.pdf).
+For comprehensive strategy testing and optimization, see the detailed methodology in [AiaBacktesting.pdf](AiaBacktesting.pdf).
 
 ### Steps
 1. During the week, a gatherer running on a remote server gathers price data from OANDA for instruments of interest into database.
