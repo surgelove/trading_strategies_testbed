@@ -8,7 +8,7 @@ This repository provides a complete trading strategy development environment wit
 
 ## Features
 
-### � Live Market Data Integration
+### 🌐 Live Market Data Integration
 - **OANDA API Integration**: Real-time connection to OANDA Live FXTrade environment
 - **Live Data Streaming**: Real-time price feeds with 5-second granularity
 - **Multi-Instrument Support**: Support for major currency pairs (USD_CAD, EUR_USD, etc.)
@@ -22,14 +22,14 @@ This repository provides a complete trading strategy development environment wit
 - **Historical Analysis**: Query and analyze stored market data
 - **Database Management**: Complete CRUD operations for trading data
 
-### � Advanced Visualization
+### 📊 Advanced Visualization
 - **Plotly Interactive Charts**: Zoom, pan, and hover functionality with dynamic scaling
 - **Bokeh Visualization**: Multi-series interactive plots with distinct color coding
 - **ECharts Integration**: Professional charting with range selectors and toolbox
 - **Matplotlib Analytics**: Traditional plotting with moving averages and indicators
 - **Real-time Updates**: Live chart updates during market data streaming
 
-### � Technical Analysis & Indicators
+### 📈 Technical Analysis & Indicators
 - **Moving Average Systems**: EMA, TEMA with customizable timeframes
 - **Crossover Detection**: Automatic bullish/bearish signal identification
 - **Time-Based Streaming**: Real-time indicator calculation during live data feeds
@@ -48,6 +48,27 @@ This repository provides a complete trading strategy development environment wit
 - **Volume Simulation**: Corresponding trading volume data generation
 - **Multiple Timeframes**: Generate data at various intervals for strategy testing
 - **Scenario Analysis**: Test strategies under different market conditions
+
+## Backtesting
+
+For comprehensive strategy testing and optimization, see the detailed methodology in [aia backtesting.pdf](aia%20backtesting.pdf).
+
+### Steps
+1. During the week, a gatherer running on a remote server gathers price data from OANDA for instruments of interest into database.
+2. At end of week, Interactive Brokers is queried to get price data for other instruments of interest which are inserted into the database.
+3. Databases are kept in a vault, one database per week.
+
+### Backtesting Process
+- For each week
+  - For each instrument
+    - For each strategy
+      - Run algorithms
+      - Generate signals
+      - Make decisions
+      - Calculate outcomes
+      - Compare strategies
+      - Compare outcomes
+      - Tweak strategies for better outcomes
 
 ## Current Notebooks
 
