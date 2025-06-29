@@ -1,3 +1,5 @@
+# Ignore tar.gz files
+*.tar.gz
 # CSV files - generated data should not be committed
 *.csv
 
