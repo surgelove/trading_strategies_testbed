@@ -9,10 +9,6 @@ from collections import deque
 import queue
 import traceback
 
-import logging
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
-
 app = Flask(__name__)
 
 # Store the latest data points (keep last 1000 points)
