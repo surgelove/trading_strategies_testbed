@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Trading Graph</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        #graph {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 600px;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .update-info {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 10px;
+        }
+        .controls {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .time-controls {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn.danger {
+            background-color: #e74c3c;
+        }
+        .btn.danger:hover {
+            background-color: #c0392b;
+        }
+        .btn.success {
+            background-color: #27ae60;
+        }
+        .btn.success:hover {
+            background-color: #2ecc71;
+        }
+        .time-input {
+            width: 60px;
+            padding: 5px;
+            margin: 0 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .time-presets {
+            margin-top: 10px;
+        }
+        .preset-btn {
+            background-color: #95a5a6;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            font-size: 0.9em;
+        }
+        .preset-btn:hover {
+            background-color: #7f8c8d;
+        }
+        .preset-btn.active {
+            background-color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔴 Live Trading Data Stream</h1>
+            <p>Real-time EMA/TEMA crossover detection with OANDA live prices</p>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="startUpdating()">▶️ Start Updates</button>
+            <button class="btn danger" onclick="stopUpdating()">⏸️ Pause Updates</button>
+            <button class="btn" onclick="refreshNow()">🔄 Refresh Now</button>
+            <span style="margin-left: 20px;">Keyboard: <strong>Spacebar</strong> = pause/resume, <strong>R</strong> = refresh</span>
+        </div>
+
+        <div class="time-controls">
+            <h3>📊 Time Range Selection</h3>
+            <div>
+                <label>Show last 
+                    <input type="number" id="start-minutes" class="time-input" value="60" min="1" max="1440">
+                    minutes
+                </label>
+                <button class="btn success" onclick="updateTimeRange()">Apply Range</button>
+                <button class="btn" onclick="showAllData()">Show All</button>
+            </div>
+            
+            <div class="time-presets">
+                <strong>Quick Select:</strong>
+                <button class="preset-btn" onclick="setTimeRange(5)">5min</button>
+                <button class="preset-btn" onclick="setTimeRange(15)">15min</button>
+                <button class="preset-btn" onclick="setTimeRange(30)">30min</button>
+                <button class="preset-btn active" onclick="setTimeRange(60)">1hr</button>
+                <button class="preset-btn" onclick="setTimeRange(120)">2hr</button>
+                <button class="preset-btn" onclick="setTimeRange(360)">6hr</button>
+                <button class="preset-btn" onclick="setTimeRange(720)">12hr</button>
+                <button class="preset-btn" onclick="showAllData()">All</button>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="current-price">--</div>
+                <div class="stat-label">Current Price</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="current-ema">--</div>
+                <div class="stat-label">EMA</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="current-tema">--</div>
+                <div class="stat-label">TEMA</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="current-mamplitude">--</div>
+                <div class="stat-label">MAmplitude %</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="last-update">--</div>
+                <div class="stat-label">Last Update</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="data-points">--</div>
+                <div class="stat-label">Data Points</div>
+            </div>
+        </div>
+        
+        <div id="graph"></div>
+        <div id="status" class="status disconnected">Connecting to server...</div>
+        <div class="update-info">
+            Auto-refresh: <span id="refresh-rate">2</span> seconds | 
+            Last refresh: <span id="last-refresh">--</span> |
+            Cross alerts: <span id="cross-count">0</span> |
+            Time range: <span id="current-range">Last 60 minutes</span>
+        </div>
+    </div>
+
+    <script>
+        let updateInterval;
+        let lastDataPoints = 0;
+        let crossCount = 0;
+        let currentTimeRange = 60; // Default to 60 minutes
+        let showAllDataMode = false;
+        
+        function updateStats(data) {
+            document.getElementById('current-price').textContent = data.price ? data.price.toFixed(5) : '--';
+            document.getElementById('current-ema').textContent = data.ema ? data.ema.toFixed(5) : '--';
+            document.getElementById('current-tema').textContent = data.tema ? data.tema.toFixed(5) : '--';
+            document.getElementById('current-mamplitude').textContent = data.mamplitude ? data.mamplitude.toFixed(3) : '--';
+            document.getElementById('last-update').textContent = data.timestamp || '--';
+            document.getElementById('data-points').textContent = data.data_points || '--';
+            
+            // Update last refresh time
+            document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString();
+            
+            // Check for cross direction and update counter
+            if (data.cross_direction && data.cross_direction !== 0) {
+                crossCount++;
+                document.getElementById('cross-count').textContent = crossCount;
+                
+                // Flash the entire page briefly for cross alerts
+                document.body.style.backgroundColor = data.cross_direction === 1 ? '#d4edda' : '#f8d7da';
+                setTimeout(() => {
+                    document.body.style.backgroundColor = '#f5f5f5';
+                }, 500);
+            }
+            
+            // Flash the stats on new data
+            if (data.data_points && data.data_points > lastDataPoints) {
+                const stats = document.querySelector('.stats');
+                stats.style.backgroundColor = '#e8f5e8';
+                setTimeout(() => {
+                    stats.style.backgroundColor = 'white';
+                }, 200);
+                lastDataPoints = data.data_points;
+            }
+        }
+        
+        function updateGraph() {
+            let url = '/plot_data';
+            if (!showAllDataMode && currentTimeRange) {
+                url += `?start_minutes=${currentTimeRange}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(plotData => {
+                    if (plotData && plotData.data && plotData.layout) {
+                        const graphDiv = document.getElementById('graph');
+                        Plotly.newPlot(graphDiv, plotData.data, plotData.layout, {
+                            responsive: true,
+                            displayModeBar: true,
+                            modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
+                        });
+                        
+                        // Update status
+                        document.getElementById('status').textContent = '✅ Connected - Live data updating';
+                        document.getElementById('status').className = 'status connected';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching plot data:', error);
+                    document.getElementById('status').textContent = '❌ Error fetching plot data: ' + error.message;
+                    document.getElementById('status').className = 'status disconnected';
+                });
+        }
+        
+        function updateData() {
+            fetch('/data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.price !== undefined) {
+                        updateStats(data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+        }
+        
+        function setTimeRange(minutes) {
+            currentTimeRange = minutes;
+            showAllDataMode = false;
+            document.getElementById('start-minutes').value = minutes;
+            
+            // Update active preset button
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update range display
+            if (minutes < 60) {
+                document.getElementById('current-range').textContent = `Last ${minutes} minutes`;
+            } else if (minutes < 1440) {
+                document.getElementById('current-range').textContent = `Last ${minutes/60} hours`;
+            } else {
+                document.getElementById('current-range').textContent = `Last ${minutes/1440} days`;
+            }
+            
+            updateGraph();
+        }
+        
+        function updateTimeRange() {
+            const minutes = parseInt(document.getElementById('start-minutes').value);
+            if (minutes && minutes > 0) {
+                setTimeRange(minutes);
+            }
+        }
+        
+        function showAllData() {
+            showAllDataMode = true;
+            currentTimeRange = null;
+            
+            // Update active preset button
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.preset-btn:last-child').classList.add('active');
+            
+            document.getElementById('current-range').textContent = 'All available data';
+            updateGraph();
+        }
+        
+        function startUpdating() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            
+            // Initial update
+            updateGraph();
+            updateData();
+            
+            // Set up periodic updates
+            updateInterval = setInterval(() => {
+                updateGraph();
+                updateData();
+            }, 2000); // Update every 2 seconds
+            
+            document.getElementById('status').textContent = '🔄 Starting live updates...';
+            document.getElementById('status').className = 'status connected';
+        }
+        
+        function stopUpdating() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+            document.getElementById('status').textContent = '⏸️ Updates paused';
+            document.getElementById('status').className = 'status disconnected';
+        }
+        
+        function refreshNow() {
+            updateGraph();
+            updateData();
+        }
+        
+        // Add keyboard controls
+        document.addEventListener('keydown', function(event) {
+            if (event.key === ' ') { // Spacebar to pause/resume
+                event.preventDefault();
+                if (updateInterval) {
+                    stopUpdating();
+                } else {
+                    startUpdating();
+                }
+            } else if (event.key === 'r' || event.key === 'R') { // R to refresh now
+                refreshNow();
+            }
+        });
+        
+        // Start when page loads
+        window.addEventListener('load', function() {
+            setTimeout(startUpdating, 1000); // Wait 1 second for server to be ready
+        });
+        
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopUpdating();
+            } else {
+                startUpdating();
+            }
+        });
+    </script>
+</body>
+</html>
