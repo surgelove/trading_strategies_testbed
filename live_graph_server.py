@@ -12,14 +12,15 @@ import traceback
 app = Flask(__name__)
 
 # Store the latest data points (keep last 1000 points)
+maxlen = 1000000
 live_data = {
-    'timestamps': deque(maxlen=1000),
-    'prices': deque(maxlen=1000),
-    'emas': deque(maxlen=1000),
-    'temas': deque(maxlen=1000),
-    'cross_ups': deque(maxlen=1000),
-    'cross_downs': deque(maxlen=1000),
-    'mamplitudes': deque(maxlen=1000)
+    'timestamps': deque(maxlen=maxlen),
+    'prices': deque(maxlen=maxlen),
+    'emas': deque(maxlen=maxlen),
+    'temas': deque(maxlen=maxlen),
+    'cross_ups': deque(maxlen=maxlen),
+    'cross_downs': deque(maxlen=maxlen),
+    'mamplitudes': deque(maxlen=maxlen)
 }
 
 class LiveGraphUpdater:
@@ -46,8 +47,8 @@ class LiveGraphUpdater:
             live_data['mamplitudes'].append(mamplitude)
             
             # Handle cross points
-            live_data['cross_ups'].append(cross_price_up if cross_price_up else None)
-            live_data['cross_downs'].append(cross_price_down if cross_price_down else None)
+            live_data['cross_ups'].append(cross_price_up)
+            live_data['cross_downs'].append(cross_price_down)
             
             # Store latest data for API endpoint
             self.latest_data = {
@@ -154,20 +155,18 @@ class LiveGraphUpdater:
             }
             
             # Cross up points
-            cross_up_y = [price if cross else None for price, cross in zip(prices_filtered, cross_ups_filtered)]
             cross_up_trace = {
                 'x': timestamps_str,
-                'y': cross_up_y,
+                'y': cross_ups_filtered,
                 'mode': 'markers',
                 'name': 'Cross Up',
                 'marker': {'symbol': 'triangle-up', 'size': 10, 'color': 'green'}
             }
             
             # Cross down points
-            cross_down_y = [price if cross else None for price, cross in zip(prices_filtered, cross_downs_filtered)]
             cross_down_trace = {
                 'x': timestamps_str,
-                'y': cross_down_y,
+                'y': cross_downs_filtered,
                 'mode': 'markers',
                 'name': 'Cross Down',
                 'marker': {'symbol': 'triangle-down', 'size': 10, 'color': 'red'}
