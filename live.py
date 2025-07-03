@@ -1308,15 +1308,45 @@ for _, row in historical_df.iterrows():
 
 # Function to run the trading script in a separate thread
 def run_trading_script():
-    # Stream live prices from OANDA and process them with the Algo instance
-    for price in stream_oanda_live_prices(api_key, account_id, instrument):
-        take, return_dict = purple.process_row(price['timestamp'], price['bid'], precision)
-        # take = return_dict.get('Take', take)  # Update the 'take' variable if present
-        # print(return_dict)
-        if take:
-            say_nonblocking(f'We would take a trade now! {take}.')
-        # Update the live graph
-        graph_updater.update_graph(return_dict)
+    """Stream live prices from OANDA and process them with the Algo instance,
+    automatically reconnecting if the connection fails."""
+    max_retries = 10  # Maximum number of reconnection attempts
+    retry_count = 0
+    retry_delay = 5  # Initial delay in seconds between retries
+    
+    while True:
+        try:
+            print(f"🔄 Starting/restarting OANDA price stream (attempt {retry_count + 1})")
+            # Stream live prices from OANDA and process them with the Algo instance
+            for price in stream_oanda_live_prices(api_key, account_id, instrument):
+                take, return_dict = purple.process_row(price['timestamp'], price['bid'], precision)
+                if take:
+                    say_nonblocking(f'We would take a trade now! {take}.')
+                # Update the live graph
+                graph_updater.update_graph(return_dict)
+                # Reset retry count on successful data
+                retry_count = 0
+                retry_delay = 5
+                
+            # If we exit the loop normally (generator ended), we should reconnect
+            print("⚠️ Price stream ended. Attempting to reconnect...")
+            retry_count += 1
+            
+        except Exception as e:
+            # Handle any exceptions that might occur during streaming
+            retry_count += 1
+            print(f"❌ Error in trading script: {e}")
+            print(f"⏱️ Reconnecting in {retry_delay} seconds...")
+        
+        # Check if we've exceeded max retries
+        if max_retries > 0 and retry_count >= max_retries:
+            print(f"❌ Failed to connect after {max_retries} attempts. Giving up.")
+            say_nonblocking("Connection failed after multiple attempts. Please check your network and restart the application.", voice="Alex")
+            break
+            
+        # Exponential backoff for retry delay (up to 60 seconds)
+        time.sleep(retry_delay)
+        retry_delay = min(retry_delay * 1.5, 60)  # Increase delay, but cap at 60 seconds
 
 # Start the trading script in a separate thread
 trading_thread = threading.Thread(target=run_trading_script, daemon=True)
