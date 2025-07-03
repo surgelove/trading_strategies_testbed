@@ -65,6 +65,8 @@ class Algo:
 
     def process_row(self, timestamp, price, precision):
 
+        threshold = 0.00005  # Threshold for ignoring min/max prices close to current price
+
         # Calculate EMA and TEMA for the current price
         ema = round(self.ema_calc.add_data_point(timestamp, price), precision)
         tema = round(self.tema_calc.add_data_point(timestamp, price), precision)
@@ -90,9 +92,19 @@ class Algo:
         if price < self.xmin_price:
             self.xmin_price = price
         if xcross_direction == 1:  # If last cross was down
-            self.xmin_prices.append(self.xmin_price)  # Append the minimum price since last cross down
-            self.xmin_price_latest = self.xmin_price  # Update latest min price
-            self.xmin_price = None  # Reset min price after cross down
+            # if max price is too close in % from price itself, ignore it
+            print('-------------')
+            print(F'yo {timestamp}')
+            if self.xmin_price is not None:
+                # print number as format 0.0000000 no matter how small
+                print(f"{self.xmin_price:.8f} {price:.8f}")
+                print(f"{round(abs(self.xmin_price - price) / price, 8):.8f}")
+            if self.xmin_price is not None and abs(self.xmin_price - price) / price < threshold:
+                self.xmin_price = None
+                print('not included')
+            else:
+                self.xmin_prices.append(self.xmin_price)  # Append the minimum price since last cross down
+                self.xmin_price = None  # Reset min price after cross down
         else:
             self.xmin_prices.append(None)
 
@@ -102,9 +114,18 @@ class Algo:
         if price > self.xmax_price:
             self.xmax_price = price
         if xcross_direction == -1:  # If last cross was up
-            self.xmax_prices.append(self.xmax_price)  # Append the maximum price since last cross up
-            self.xmax_price_latest = self.xmax_price  # Update latest max price
-            self.xmax_price = None  # Reset max price after cross up
+            # if max price is too close in % from price itself, ignore it
+            print('-------------')
+            print(F'yo {timestamp}')
+            if self.xmax_price is not None:
+                print(f"{self.xmax_price:.8f} {price:.8f}")
+                print(f"{round(abs(self.xmax_price - price) / price, 8):.8f}")
+            if self.xmax_price is not None and abs(self.xmax_price - price) / price < threshold:
+                self.xmax_price = None
+                print('not included')
+            else:
+                self.xmax_prices.append(self.xmax_price)  # Append the maximum price since last cross up
+                self.xmax_price = None  # Reset max price after cross up
         else:
             self.xmax_prices.append(None)
 
@@ -1261,7 +1282,7 @@ instrument = input("Instrument (e.g., USD_CAD): ")
 print(f'api_key: {api_key}, account_id: {account_id}, instrument: {instrument}')
 
 precision = get_instrument_precision(url, api_key, account_id, instrument)  # Get precision from the mean price
-purple = Algo(interval1='15min', interval2='5min')  # Create an instance of the Algo class with 15-minute intervals
+purple = Algo(interval1='15min', interval2='2min')  # Create an instance of the Algo class with 15-minute intervals
 
 # Start the web server in a separate thread
 import threading

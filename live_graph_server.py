@@ -160,7 +160,7 @@ class LiveGraphUpdater:
                 'y': prices_filtered,
                 'mode': 'lines+markers',
                 'name': 'Price',
-                'line': {'color': 'black', 'width': 1},
+                'line': {'color': 'gray', 'width': 1, 'opacity': 0.5},
                 'marker': {'size': 3}
             }
             
@@ -223,7 +223,7 @@ class LiveGraphUpdater:
                 'y': xmin_prices_filtered,
                 'mode': 'markers',
                 'name': 'XMin Price',
-                'marker': {'symbol': 'diamond', 'size': 8, 'color': 'red', 'opacity': 1}
+                'marker': {'symbol': 'diamond', 'size': 8, 'color': 'darkred', 'opacity': 1}
             }
 
             # XMax price trace
@@ -232,7 +232,7 @@ class LiveGraphUpdater:
                 'y': xmax_prices_filtered,
                 'mode': 'markers',
                 'name': 'XMax Price',
-                'marker': {'symbol': 'diamond', 'size': 8, 'color': 'green', 'opacity': 1}
+                'marker': {'symbol': 'diamond', 'size': 8, 'color': 'darkgreen', 'opacity': 1}
             }
 
             # MAmplitude trace
