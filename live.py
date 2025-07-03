@@ -1,4 +1,3 @@
-
 import subprocess
 import threading
 import time
@@ -10,6 +9,9 @@ from bokeh.layouts import column
 from bokeh.models import ColumnDataSource, HoverTool
 from bokeh.plotting import figure, output_notebook, show
 import requests
+import tkinter as tk
+from tkinter import messagebox
+import pyttsx3
 
 
 class Algo:
@@ -1247,10 +1249,34 @@ for _, row in historical_df.iterrows():
     graph_updater.update_graph(return_dict)
 
 
-# Stream live prices from OANDA and process them with the Algo instance
-for price in stream_oanda_live_prices(api_key, account_id, instrument):
-    return_dict = purple.process_row(price['timestamp'], price['bid'], precision)
-    
-    # Update the live graph
-    graph_updater.update_graph(return_dict)
+# Function to run the trading script in a separate thread
+def run_trading_script():
+    # Stream live prices from OANDA and process them with the Algo instance
+    for price in stream_oanda_live_prices(api_key, account_id, instrument):
+        return_dict = purple.process_row(price['timestamp'], price['bid'], precision)
+        # Update the live graph
+        graph_updater.update_graph(return_dict)
+
+# Start the trading script in a separate thread
+trading_thread = threading.Thread(target=run_trading_script, daemon=True)
+trading_thread.start()
+
+# Function to print and say hello
+def say_hello():
+    print("Hello")
+    messagebox.showinfo("Greeting", "Hello")
+    engine = pyttsx3.init()
+    engine.say("Hello")
+    engine.runAndWait()
+
+# Run the GUI in the main thread
+root = tk.Tk()
+root.title("Hello GUI")
+
+# Add a button to the GUI
+hello_button = tk.Button(root, text="Say Hello", command=say_hello)
+hello_button.pack(pady=20)
+
+# Run the GUI event loop
+root.mainloop()
 
