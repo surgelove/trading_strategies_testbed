@@ -1,0 +1,1256 @@
+
+import subprocess
+import threading
+import time
+import json
+from collections import deque
+import pandas as pd
+from datetime import datetime, timedelta
+from bokeh.layouts import column
+from bokeh.models import ColumnDataSource, HoverTool
+from bokeh.plotting import figure, output_notebook, show
+import requests
+
+
+class Algo:
+    """
+    Time-based streaming moving average calculator that uses actual timestamps
+    instead of fixed number of data points. Supports SMA, EMA, DEMA, and TEMA.
+    
+    Key Features:
+    - Uses time windows (e.g., "5 minutes", "1 hour") instead of row counts
+    - Automatically handles irregular time intervals
+    - Maintains time-weighted calculations
+    - Supports all four MA types with time-based logic
+    """
+
+    def __init__(self, interval):
+        # 1. Create the calculator
+        self.ema_calc = TimeBasedStreamingMA(interval, ma_type='EMA')
+        self.tema_calc = TimeBasedStreamingMA(interval, ma_type='TEMA')
+
+        # initialize the json that will hold timestamp price and ema values
+        self.ema_values = []
+        self.tema_values = []
+        self.mamplitudes = []
+
+        self.cross_directions = []  # List to hold cross direction
+        self.cross_prices = []  # List to hold cross price
+        self.cross_prices_up = []  # List to hold cross up prices
+        self.cross_prices_down = []  # List to hold cross down prices
+
+        self.min_prices = []  # List to hold minimum prices since cross down
+        self.max_prices = []  # List to hold maximum prices since cross up
+        self.min_price = None  # keeps track of the minimum price
+        self.max_price = None  # keeps track of the maximum price
+        self.min_price_latest = None  # keeps track of the latest minimum price
+        self.max_price_latest = None  # keeps track of the latest maximum price
+
+        self.travels = []  # List to hold travel values
+        self.travel = None  # keeps track of the travel from min to max after cross up
+
+        self.enough_mamplitude = False  # Flag to indicate if amplitude is greater than 0.02
+
+
+    def process_row(self, timestamp, price, precision):
+
+        # Calculate EMA and TEMA for the current price
+        ema = round(self.ema_calc.add_data_point(timestamp, price), precision)
+        tema = round(self.tema_calc.add_data_point(timestamp, price), precision)
+        self.ema_values.append(ema)  # EMA value
+        self.tema_values.append(tema)  # TEMA value
+
+        # Calculate the amplitude between EMA and TEMA
+        mamplitude = None
+        mamplitude_temp = round(abs(ema - tema), precision)  # Calculate the amplitude between EMA and TEMA
+        # percent of price
+        mamplitude = round((mamplitude_temp / price) * 100, precision) if price != 0 else 0
+        self.mamplitudes.append(mamplitude)  # Append the amplitude to the list
+        if mamplitude > 0.008:
+            self.enough_mamplitude = True  # Set flag if amplitude is greater than 0.02
+
+        #  When tema crosses ema, detect the direction
+        cross_direction = None
+        cross_price = None
+        cross_price_up = None
+        cross_price_down = None
+        if len(self.ema_values) > 1 and len(self.tema_values) > 1:
+            if (self.tema_values[-1] > self.ema_values[-1] and self.tema_values[-2] <= self.ema_values[-2]):
+                if self.enough_mamplitude:
+                    self.enough_mamplitude = False  # Reset flag after cross up
+                    cross_price = price
+                    cross_price_up = price  # Store the price at which the cross occurred
+                    say_nonblocking("Cross up detected", voice="Alex")
+                # print('up', cross_price, timestamp, tema_values[-1], ema_values[-1])  # Print timestamp and values
+                else:
+                    say_nonblocking("Cross up detected but not enough amplitude", voice="Alex")
+                cross_direction = 1
+                print(f'{timestamp} - Price: {price}, EMA: {ema}, TEMA: {tema}, MAmplitude: {mamplitude}, Cross Direction: {cross_direction}')
+            elif (self.tema_values[-1] < self.ema_values[-1] and self.tema_values[-2] >= self.ema_values[-2]):
+                if self.enough_mamplitude:
+                    self.enough_mamplitude = False
+                    cross_price = price
+                    cross_price_down = price  # Store the price at which the cross occurred
+                    say_nonblocking("Cross down detected", voice="Samantha")
+                else:
+                    say_nonblocking("Cross down detected but not enough amplitude", voice="Samantha")
+                cross_direction = -1
+                print(f'{timestamp } - Price: {price}, EMA: {ema}, TEMA: {tema}, MAmplitude: {mamplitude}, Cross Direction: {cross_direction}')
+        self.cross_directions.append(cross_direction)  # Append cross direction to the list
+        self.cross_prices.append(cross_price)  # Append cross price to the list
+        self.cross_prices_up.append(cross_price_up)  # Append cross price up to the list
+        self.cross_prices_down.append(cross_price_down)  # Append cross price down to the list
+
+        # when it crosses up, calculate the travel from min to max
+        travel = None
+        if cross_direction == 1:  # If last cross was up
+            # Calculate the travel from min to max
+            if self.min_price_latest is not None and self.max_price_latest is not None:
+                travel = round(abs(self.max_price_latest - self.min_price_latest), precision)  # Travel from min to max
+            # convert travel to percentage of min price
+            if self.min_price_latest is not None and travel is not None:
+                travel = round((travel / self.min_price_latest) * 100, precision)
+        self.travels.append(travel)  # Append travel value to the list
+
+        # every row, calculate the min price of all prices since last cross down
+        if self.min_price is None:
+            self.min_price = price
+        if price < self.min_price:
+            self.min_price = price
+        if cross_direction == 1:  # If last cross was down
+            self.min_prices.append(self.min_price)  # Append the minimum price since last cross down
+            self.min_price_latest = self.min_price  # Update latest min price
+            self.min_price = None  # Reset min price after cross down
+        else:
+            self.min_prices.append(None)
+
+        # every row, calculate the max price of all prices since last cross up
+        if self.max_price is None:
+            self.max_price = price
+        if price > self.max_price:
+            self.max_price = price
+        if cross_direction == -1:  # If last cross was up
+            self.max_prices.append(self.max_price)  # Append the maximum price since last cross up
+            self.max_price_latest = self.max_price  # Update latest max price
+            self.max_price = None  # Reset max price after cross up
+        else:
+            self.max_prices.append(None)
+
+        return {
+            'timestamp': timestamp,
+            'price': price,
+            'EMA': ema,
+            'TEMA': tema,
+            'MAmplitude': mamplitude,
+            'Cross_Direction': cross_direction,
+            'Cross_Price': cross_price,
+            'Cross_Price_Up': cross_price_up,
+            'Cross_Price_Down': cross_price_down,
+            'Min_Price': self.min_prices[-1],
+            'Max_Price': self.max_prices[-1],
+            'Travel': travel
+        }
+        # print(f'{timestamp} - Price: {price}, EMA: {ema}, TEMA: {tema}, MAmplitude: {mamplitude}, Cross Direction: {cross_direction}, Travel: {travel}')
+
+
+def say_nonblocking(text, voice=None):
+    """
+    Say text on macOS using the 'say' command in a non-blocking way
+    
+    Parameters:
+    -----------
+    text : str
+        Text to speak
+    voice : str, optional
+        Voice to use (e.g., 'Alex', 'Samantha', 'Victoria')
+    """
+    print("Speaking:", text)
+    def speak():
+        try:
+            cmd = ['say']
+            if voice:
+                cmd.extend(['-v', voice])
+            cmd.append(text)
+            subprocess.run(cmd, check=True)
+        except Exception as e:
+            print(f"Error with text-to-speech: {e}")
+    
+    # Run in a separate thread to avoid blocking
+    thread = threading.Thread(target=speak, daemon=True)
+    thread.start()
+
+
+def purple(df, interval, precision):
+
+    # Clean df
+    df = df[['timestamp', 'price']].copy()  # Keep only necessary columns
+
+    # 1. Create the calculator
+    ema_calc = TimeBasedStreamingMA(interval, ma_type='EMA')
+    tema_calc = TimeBasedStreamingMA(interval, ma_type='TEMA')
+
+    # initialize the json that will hold timestamp price and ema values
+    ema_values = []
+    tema_values = []
+    mamplitudes = [] 
+
+    cross_directions = []  # List to hold cross direction
+    cross_prices = []  # List to hold cross price
+    cross_prices_up = []  # List to hold cross up prices
+    cross_prices_down = []  # List to hold cross down prices
+
+    min_prices = []  # List to hold minimum prices since cross down
+    max_prices = []  # List to hold maximum prices since cross up
+    min_price = None  # keeps track of the minimum price
+    max_price = None  # keeps track of the maximum price
+    min_price_latest = None  # keeps track of the latest minimum price
+    max_price_latest = None  # keeps track of the latest maximum price
+
+    travels = []  # List to hold travel values
+    travel = None  # keeps track of the travel from min to max after cross up
+
+    enough_mamplitude = False  # Flag to indicate if amplitude is greater than 0.02
+
+    # 2. Process the DataFrame
+    for _, row in df.iterrows():
+        # wait 1 second to simulate real-time processing
+        # time.sleep(1)  # Uncomment this line to simulate real-time processing
+        timestamp = row['timestamp']
+        price = round(row['price'], precision)
+
+        # Calculate EMA and TEMA for the current price
+        ema = round(ema_calc.add_data_point(timestamp, price), precision)
+        tema = round(tema_calc.add_data_point(timestamp, price), precision)
+        ema_values.append(ema)  # EMA value
+        tema_values.append(tema)  # TEMA value
+
+        # Calculate the amplitude between EMA and TEMA
+        mamplitude = None
+        mamplitude_temp = round(abs(ema - tema), precision)  # Calculate the amplitude between EMA and TEMA
+        # percent of price
+        mamplitude = round((mamplitude_temp / price) * 100, precision) if price != 0 else 0
+        mamplitudes.append(mamplitude)  # Append the amplitude to the list
+        if mamplitude > 0.008:
+            enough_mamplitude = True  # Set flag if amplitude is greater than 0.02
+
+        #  When tema crosses ema, detect the direction
+        cross_direction = None
+        cross_price = None
+        cross_price_up = None
+        cross_price_down = None
+        if len(ema_values) > 1 and len(tema_values) > 1:
+            if (tema_values[-1] > ema_values[-1] and tema_values[-2] <= ema_values[-2]):
+                if enough_mamplitude:
+                    enough_mamplitude = False  # Reset flag after cross up
+                    cross_direction = 1
+                    cross_price = price
+                    cross_price_up = price  # Store the price at which the cross occurred
+                # print('up', cross_price, timestamp, tema_values[-1], ema_values[-1])  # Print timestamp and values
+            elif (tema_values[-1] < ema_values[-1] and tema_values[-2] >= ema_values[-2]):
+                if enough_mamplitude:
+                    enough_mamplitude = False
+                    cross_direction = -1
+                    cross_price = price
+                    cross_price_down = price  # Store the price at which the cross occurred
+                    # print('down', cross_price, timestamp, tema_values[-1], ema_values[-1])  # Print timestamp and values
+        cross_directions.append(cross_direction)  # Append cross direction to the list
+        cross_prices.append(cross_price)  # Append cross price to the list
+        cross_prices_up.append(cross_price_up)  # Append cross price up to the list
+        cross_prices_down.append(cross_price_down)  # Append cross price down to the list
+
+        # when it crosses up, calculate the travel from min to max
+        travel = None
+        if cross_direction == 1:  # If last cross was up
+            # Calculate the travel from min to max
+            if min_price_latest is not None and max_price_latest is not None:
+                travel = round(abs(max_price_latest - min_price_latest), precision)  # Travel from min to max
+            # convert travil to percentage of min price
+            if min_price_latest is not None and travel is not None:
+                travel = round((travel / min_price_latest) * 100, precision)
+        travels.append(travel)  # Append travel value to the list
+        
+        # every row, calculate the min price of all prices since last cross down
+        if min_price is None:
+            min_price = price
+        if price < min_price:
+            min_price = price
+        if cross_direction == 1:  # If last cross was down
+            min_prices.append(min_price)  # Append the minimum price since last cross down
+            min_price_latest = min_price  # Update latest min price
+            min_price = None  # Reset min price after cross down
+        else:
+            min_prices.append(None)
+
+        # every row, calculate the max price of all prices since last cross up
+        if max_price is None:
+            max_price = price
+        if price > max_price:
+            max_price = price
+        if cross_direction == -1:  # If last cross was up
+            max_prices.append(max_price)  # Append the maximum price since last cross up
+            max_price_latest = max_price  # Update latest max price
+            max_price = None  # Reset max price after cross up
+        else:
+            max_prices.append(None)
+
+    # 3. Add to DataFrame
+    df['EMA'] = ema_values
+    df['TEMA'] = tema_values
+    df['Cross_Direction'] = cross_directions  # Add cross direction
+    df['Cross_Price'] = cross_prices  # Add cross price
+    df['Cross_Price_Up'] = cross_prices_up  # Add cross price up
+    df['Cross_Price_Down'] = cross_prices_down  # Add cross price down
+    df['Min_Price'] = min_prices  # If you have minimum prices to track
+    df['Max_Price'] = max_prices  # If you have maximum prices to track
+    df['Travel'] = travels  # If you have travel values to track
+    df['MAmplitude'] = mamplitudes  # If you have MAmplitude values to track
+
+    return df
+
+
+class TimeBasedStreamingMA:
+    """
+    Time-based streaming moving average calculator that uses actual timestamps
+    instead of fixed number of data points. Supports SMA, EMA, DEMA, and TEMA.
+    
+    Key Features:
+    - Uses time windows (e.g., "5 minutes", "1 hour") instead of row counts
+    - Automatically handles irregular time intervals
+    - Maintains time-weighted calculations
+    - Supports all four MA types with time-based logic
+    """
+    
+    def __init__(self, time_window, ma_type='SMA', alpha=None):
+        """
+        Initialize the time-based streaming moving average calculator.
+        
+        Parameters:
+        -----------
+        time_window : str or timedelta
+            Time window for calculations (e.g., '5min', '1H', '30s')
+            Can be pandas timedelta string or datetime.timedelta object
+        ma_type : str
+            Type of moving average: 'SMA', 'EMA', 'DEMA', 'TEMA'
+        alpha : float, optional
+            Smoothing factor for EMA. If None, calculated based on time window
+        """
+        self.ma_type = ma_type.upper()
+        
+        # Validate MA type
+        if self.ma_type not in ['SMA', 'EMA', 'DEMA', 'TEMA']:
+            raise ValueError("ma_type must be one of: 'SMA', 'EMA', 'DEMA', 'TEMA'")
+        
+        # Convert time window to timedelta
+        if isinstance(time_window, str):
+            # Handle common abbreviations and deprecated formats
+            time_window_str = time_window.replace('H', 'h')  # Fix deprecated 'H' format
+            self.time_window = pd.Timedelta(time_window_str)
+        elif isinstance(time_window, timedelta):
+            self.time_window = pd.Timedelta(time_window)
+        else:
+            raise ValueError("time_window must be a string (e.g., '5min') or timedelta object")
+        
+        # Store original time window specification
+        self.time_window_str = str(time_window)
+        
+        # Calculate alpha for EMA-based calculations
+        if alpha is None:
+            # Convert time window to approximate number of periods for alpha calculation
+            # Assume 1-minute base period for alpha calculation
+            minutes = self.time_window.total_seconds() / 60
+            equivalent_periods = max(1, minutes)  # At least 1 period
+            self.alpha = 2.0 / (equivalent_periods + 1)
+        else:
+            if not (0 < alpha < 1):
+                raise ValueError("alpha must be between 0 and 1")
+            self.alpha = alpha
+        
+        # Initialize data storage - we need to keep all data within time window for SMA
+        self.data_points = deque()  # Store (timestamp, price) tuples
+        self.timestamps = deque()   # Store just timestamps for quick access
+        
+        # For EMA, DEMA, TEMA - maintain running calculations
+        if self.ma_type != 'SMA':
+            self.ema1 = None  # First EMA
+            self.ema2 = None  # Second EMA (for DEMA, TEMA)
+            self.ema3 = None  # Third EMA (for TEMA)
+            self.initialized = False
+            self.last_timestamp = None
+        
+        self.data_count = 0
+        
+    def _clean_old_data(self, current_timestamp):
+        """Remove data points older than the time window."""
+        cutoff_time = current_timestamp - self.time_window
+        
+        # Remove old data points
+        while self.data_points and self.data_points[0][0] < cutoff_time:
+            self.data_points.popleft()
+            if self.timestamps:
+                self.timestamps.popleft()
+    
+    def _calculate_time_weight(self, current_timestamp, last_timestamp):
+        """Calculate time-based weight for EMA calculations."""
+        if last_timestamp is None:
+            return self.alpha
+        
+        # Calculate time elapsed in seconds
+        time_elapsed = (current_timestamp - last_timestamp).total_seconds()
+        
+        # Handle edge cases
+        if time_elapsed <= 0:
+            return self.alpha  # No time elapsed, use base alpha
+        
+        # Assume base interval for alpha calculation (e.g., 60 seconds)
+        base_interval = 60.0  # 1 minute
+        
+        # Adjust alpha based on actual time elapsed
+        time_factor = time_elapsed / base_interval
+        
+        # Prevent issues with very small alpha values and large time factors
+        if self.alpha <= 0 or self.alpha >= 1:
+            return self.alpha
+        
+        # Apply time-weighted alpha: more time elapsed = more weight to new data
+        try:
+            adjusted_alpha = 1 - (1 - self.alpha) ** time_factor
+            return min(1.0, max(0.0, adjusted_alpha))  # Clamp between 0 and 1
+        except (ZeroDivisionError, OverflowError, ValueError):
+            # Fallback to base alpha if calculation fails
+            return self.alpha
+    
+    def add_data_point(self, timestamp, price):
+        """
+        Add a new data point and calculate the updated time-based moving average.
+        
+        Parameters:
+        -----------
+        timestamp : datetime or str
+            Timestamp of the data point
+        price : float
+            Price value
+            
+        Returns:
+        --------
+        dict
+            Dictionary containing current MA, time window info, and metadata
+        """
+        # Convert timestamp to datetime if it's a string
+        if isinstance(timestamp, str):
+            timestamp = pd.to_datetime(timestamp)
+        
+        self.data_count += 1
+        
+        # Clean old data points outside time window
+        self._clean_old_data(timestamp)
+        
+        # Add new data point
+        self.data_points.append((timestamp, price))
+        self.timestamps.append(timestamp)
+        
+        if self.ma_type == 'SMA':
+            return self._calculate_time_sma(timestamp, price)
+        elif self.ma_type == 'EMA':
+            return self._calculate_time_ema(timestamp, price)
+        elif self.ma_type == 'DEMA':
+            return self._calculate_time_dema(timestamp, price)
+        elif self.ma_type == 'TEMA':
+            return self._calculate_time_tema(timestamp, price)
+    
+    def _calculate_time_sma(self, timestamp, price, return_full_window=False):
+        """Calculate time-based Simple Moving Average."""
+        # Calculate SMA using all data points within time window
+        if len(self.data_points) == 0:
+            current_ma = price
+        else:
+            total_price = sum(p for t, p in self.data_points)
+            current_ma = total_price / len(self.data_points)
+        
+        if return_full_window:
+            return {
+                'timestamp': timestamp,
+                'price': price,
+                'moving_average': current_ma,
+                'data_points_count': len(self.data_points),
+                'time_window': self.time_window_str,
+                'window_start': self.timestamps[0] if self.timestamps else timestamp,
+                'window_end': timestamp,
+                'time_span_actual': (timestamp - self.timestamps[0]).total_seconds() if self.timestamps else 0,
+                'time_span_target': self.time_window.total_seconds(),
+                'is_full_window': (timestamp - self.timestamps[0]) >= self.time_window if self.timestamps else False,
+                'ma_type': 'Time-SMA'
+            }
+        return current_ma
+    
+    def _calculate_time_ema(self, timestamp, price, return_full_window=False):
+        """Calculate time-based Exponential Moving Average."""
+        if not self.initialized:
+            # Initialize with first price
+            self.ema1 = price
+            self.initialized = True
+            self.last_timestamp = timestamp
+            time_weight = self.alpha
+        else:
+            # Calculate time-adjusted alpha
+            time_weight = self._calculate_time_weight(timestamp, self.last_timestamp)
+            # EMA calculation with time weighting
+            self.ema1 = time_weight * price + (1 - time_weight) * self.ema1
+            self.last_timestamp = timestamp
+        
+        if return_full_window:
+            return {
+                'timestamp': timestamp,
+                'price': price,
+                'moving_average': self.ema1,
+                'data_points_count': self.data_count,
+                'time_window': self.time_window_str,
+                'window_start': self.timestamps[0] if self.timestamps else timestamp,
+                'window_end': timestamp,
+                'time_span_actual': (timestamp - self.timestamps[0]).total_seconds() if self.timestamps else 0,
+                'time_span_target': self.time_window.total_seconds(),
+                'is_full_window': (timestamp - self.timestamps[0]) >= self.time_window if self.timestamps else False,
+                'ma_type': 'Time-EMA',
+                'alpha_used': time_weight,
+                'base_alpha': self.alpha
+        }
+        return self.ema1
+        
+    def _calculate_time_dema(self, timestamp, price, return_full_window=False):
+        """Calculate time-based Double Exponential Moving Average."""
+        if not self.initialized:
+            # Initialize with first price
+            self.ema1 = price
+            self.ema2 = price
+            self.initialized = True
+            self.last_timestamp = timestamp
+            time_weight = self.alpha
+        else:
+            # Calculate time-adjusted alpha
+            time_weight = self._calculate_time_weight(timestamp, self.last_timestamp)
+            # First EMA
+            self.ema1 = time_weight * price + (1 - time_weight) * self.ema1
+            # Second EMA (EMA of first EMA)
+            self.ema2 = time_weight * self.ema1 + (1 - time_weight) * self.ema2
+            self.last_timestamp = timestamp
+        
+        # DEMA = 2 * EMA1 - EMA2
+        dema = 2 * self.ema1 - self.ema2
+        
+        if return_full_window:
+            return {
+                'timestamp': timestamp,
+                'price': price,
+                'moving_average': dema,
+                'data_points_count': self.data_count,
+                'time_window': self.time_window_str,
+                'window_start': self.timestamps[0] if self.timestamps else timestamp,
+                'window_end': timestamp,
+                'time_span_actual': (timestamp - self.timestamps[0]).total_seconds() if self.timestamps else 0,
+                'time_span_target': self.time_window.total_seconds(),
+                'is_full_window': (timestamp - self.timestamps[0]) >= self.time_window if self.timestamps else False,
+                'ma_type': 'Time-DEMA',
+                'alpha_used': time_weight,
+                'base_alpha': self.alpha,
+                'ema1': self.ema1,
+                'ema2': self.ema2
+            }
+        return dema
+    
+    def _calculate_time_tema(self, timestamp, price, return_full_window=False):
+        """Calculate time-based Triple Exponential Moving Average."""
+        if not self.initialized:
+            # Initialize with first price
+            self.ema1 = price
+            self.ema2 = price
+            self.ema3 = price
+            self.initialized = True
+            self.last_timestamp = timestamp
+            time_weight = self.alpha
+        else:
+            # Calculate time-adjusted alpha
+            time_weight = self._calculate_time_weight(timestamp, self.last_timestamp)
+            # First EMA
+            self.ema1 = time_weight * price + (1 - time_weight) * self.ema1
+            # Second EMA (EMA of first EMA)
+            self.ema2 = time_weight * self.ema1 + (1 - time_weight) * self.ema2
+            # Third EMA (EMA of second EMA)
+            self.ema3 = time_weight * self.ema2 + (1 - time_weight) * self.ema3
+            self.last_timestamp = timestamp
+        
+        # TEMA = 3 * EMA1 - 3 * EMA2 + EMA3
+        tema = 3 * self.ema1 - 3 * self.ema2 + self.ema3
+        
+        if return_full_window:
+            return {
+                'timestamp': timestamp,
+                'price': price,
+                'moving_average': tema,
+                'data_points_count': self.data_count,
+                'time_window': self.time_window_str,
+                'window_start': self.timestamps[0] if self.timestamps else timestamp,
+                'window_end': timestamp,
+                'time_span_actual': (timestamp - self.timestamps[0]).total_seconds() if self.timestamps else 0,
+                'time_span_target': self.time_window.total_seconds(),
+                'is_full_window': (timestamp - self.timestamps[0]) >= self.time_window if self.timestamps else False,
+                'ma_type': 'Time-TEMA',
+                'alpha_used': time_weight,
+                'base_alpha': self.alpha,
+                'ema1': self.ema1,
+                'ema2': self.ema2,
+                'ema3': self.ema3
+            }
+        return tema
+    
+    def get_current_ma(self):
+        """Get the current moving average without adding new data."""
+        if self.ma_type == 'SMA':
+            if len(self.data_points) == 0:
+                return None
+            total_price = sum(p for t, p in self.data_points)
+            return total_price / len(self.data_points)
+        else:
+            if not self.initialized:
+                return None
+            if self.ma_type == 'EMA':
+                return self.ema1
+            elif self.ma_type == 'DEMA':
+                return 2 * self.ema1 - self.ema2
+            elif self.ma_type == 'TEMA':
+                return 3 * self.ema1 - 3 * self.ema2 + self.ema3
+    
+    def get_time_window_info(self):
+        """Get information about the current time window state."""
+        current_time = self.timestamps[-1] if self.timestamps else None
+        oldest_time = self.timestamps[0] if self.timestamps else None
+        
+        base_info = {
+            'ma_type': f'Time-{self.ma_type}',
+            'time_window_spec': self.time_window_str,
+            'time_window_seconds': self.time_window.total_seconds(),
+            'data_points_count': len(self.data_points),
+            'total_data_processed': self.data_count,
+            'current_ma': self.get_current_ma(),
+            'oldest_timestamp': oldest_time,
+            'newest_timestamp': current_time,
+            'actual_time_span': (current_time - oldest_time).total_seconds() if current_time and oldest_time else 0,
+            'window_utilization': ((current_time - oldest_time).total_seconds() / self.time_window.total_seconds() * 100) if current_time and oldest_time else 0
+        }
+        
+        if self.ma_type != 'SMA':
+            base_info.update({
+                'base_alpha': self.alpha,
+                'initialized': self.initialized,
+                'last_calculation_time': self.last_timestamp
+            })
+            
+            if self.initialized:
+                if self.ma_type in ['EMA', 'DEMA', 'TEMA']:
+                    base_info['ema1'] = self.ema1
+                if self.ma_type in ['DEMA', 'TEMA']:
+                    base_info['ema2'] = self.ema2
+                if self.ma_type == 'TEMA':
+                    base_info['ema3'] = self.ema3
+        
+        return base_info
+    
+    def reset(self):
+        """Reset the moving average calculator."""
+        self.data_count = 0
+        self.data_points.clear()
+        self.timestamps.clear()
+        
+        if self.ma_type != 'SMA':
+            self.ema1 = None
+            self.ema2 = None
+            self.ema3 = None
+            self.initialized = False
+            self.last_timestamp = None
+
+
+def plot_bokeh(df, columns_config, x_axis_label='Time'):
+    """
+    Plot up to 5 vertically stacked Bokeh graphs (upper and up to 5 lower) with dict input as specified.
+    The graphs are synchronized: zoom/pan/select in one affects the others.
+    Display output in the notebook.
+    """
+    output_notebook()  # <-- This makes Bokeh plots display in Jupyter notebooks
+
+    figs = []
+    default_colors = [
+        '#b9babc', 'blue', 'purple', 'black', 'green', 'red', '#9467bd', '#8c564b', '#e377c2',
+        '#7f7f7f', '#bcbd22', '#17becf', '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5'
+    ]
+
+    shared_x_range = None
+
+    # Support up to 5 lower graphs, keys: 'lower_graph', 'lower_graph2', ..., 'lower_graph5'
+    graph_keys = ['upper_graph'] + [f'lower_graph{i}' if i > 1 else 'lower_graph' for i in range(1, 6)]
+
+    for idx, graph_key in enumerate(graph_keys):
+        graph_cfg = columns_config.get(graph_key, {})
+        if not graph_cfg.get('display', True):
+            continue
+
+        graph_df = df[['timestamp']].copy()
+        for col, col_cfg in graph_cfg.get('columns', {}).items():
+            if 'values' in col_cfg:
+                graph_df[col] = col_cfg['values']
+            elif col in df.columns:
+                graph_df[col] = df[col]
+
+        source = ColumnDataSource(graph_df)
+        if idx == 0:
+            p = figure(
+                title=graph_cfg.get('title', ''),
+                x_axis_type='datetime',
+                width=800,
+                height=300,
+                x_axis_label=x_axis_label,
+                y_axis_label=graph_cfg.get('y_axis_label', '')
+            )
+            shared_x_range = p.x_range
+        else:
+            p = figure(
+                title=graph_cfg.get('title', ''),
+                x_axis_type='datetime',
+                width=800,
+                height=200,
+                x_axis_label=x_axis_label,
+                y_axis_label=graph_cfg.get('y_axis_label', ''),
+                x_range=shared_x_range
+            )
+
+        plotted_cols = []
+        for i, (col, col_cfg) in enumerate(graph_cfg.get('columns', {}).items()):
+            if not col_cfg.get('display', True) or col not in graph_df.columns:
+                continue
+            color = col_cfg.get('color', default_colors[i % len(default_colors)])
+            glyph_type = col_cfg.get('type', 'line')
+            width = col_cfg.get('width', 2)
+            alpha = col_cfg.get('alpha', 1.0)
+            if glyph_type != 'line':
+                p.scatter('timestamp', col, source=source, legend_label=col, size=width, color=color, alpha=alpha, marker=glyph_type)
+            else:
+                p.line('timestamp', col, source=source, legend_label=col, line_width=width, color=color, alpha=alpha)
+            plotted_cols.append(col)
+
+        hover_tooltips = [('Time', '@timestamp{%F %T}')]
+        for col in plotted_cols:
+            hover_tooltips.append((col, f'@{col}{{0.00000}}'))
+        hover = HoverTool()
+        hover.tooltips = hover_tooltips
+        hover.formatters = {'@timestamp': 'datetime'}
+        p.add_tools(hover)
+
+        p.legend.location = 'top_left'
+        p.legend.click_policy = "hide"
+        p.grid.grid_line_alpha = 0.3
+        figs.append(p)
+
+    show(column(*figs))
+
+
+def stream_oanda_live_prices(api_key, account_id, instrument='USD_CAD', callback=None, max_duration=None):
+    """
+    Stream live prices from OANDA API for a single instrument
+    
+    Parameters:
+    -----------
+    api_key : str
+        Your OANDA live API key
+    account_id : str  
+        Your OANDA live account ID
+    instrument : str, default='USD_CAD'
+        Single instrument to stream (e.g., 'EUR_USD', 'GBP_JPY')
+    callback : function, optional
+        Function to call with each price update: callback(timestamp, instrument, bid, ask, price)
+    max_duration : int, optional
+        Maximum streaming duration in seconds (None = unlimited)
+    
+    Returns:
+    --------
+    generator or None
+        Yields price dictionaries or None if connection fails
+    """
+    
+    # LIVE OANDA STREAMING API URL
+    STREAM_URL = "https://stream-fxtrade.oanda.com"
+    
+    print("🔴 CONNECTING TO OANDA LIVE STREAMING")
+    print("=" * 50)
+    print("⚠️  WARNING: This connects to LIVE market stream")
+    print(f"📊 Streaming: {instrument}")
+    print(f"⏱️  Duration: {'Unlimited' if max_duration is None else f'{max_duration}s'}")
+    print("=" * 50)
+    
+    # Validate inputs
+    if not api_key:
+        print("❌ ERROR: Live API key is required!")
+        return None
+    
+    if not account_id:
+        print("❌ ERROR: Live Account ID is required!")
+        return None
+    
+    # Headers for streaming request
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Accept': 'application/stream+json',
+        'Content-Type': 'application/json'
+    }
+    
+    # Streaming endpoint for prices - FIXED URL CONSTRUCTION
+    stream_url = f"{STREAM_URL}/v3/accounts/{account_id}/pricing/stream"
+    
+    # Parameters for streaming
+    params = {
+        'instruments': instrument,
+        'snapshot': 'true'  # Include initial snapshot
+    }
+    
+    try:
+        print(f"🌐 Initiating streaming connection...")
+        print(f"   URL: {stream_url}")
+        print(f"   Instrument: {instrument}")
+        
+        # Get instrument precision - FIXED: Use the BASE API URL, not streaming URL
+        BASE_API_URL = "https://api-fxtrade.oanda.com"
+        precision = get_instrument_precision(BASE_API_URL, api_key, account_id, instrument)
+        if precision is None:
+            precision = 5  # Default precision
+            print(f"⚠️  Using default precision: {precision}")
+
+        # Make streaming request
+        response = requests.get(stream_url, headers=headers, params=params, stream=True, timeout=30)
+        
+        # Check for HTTP errors
+        if response.status_code == 401:
+            print("❌ AUTHENTICATION ERROR (401)")
+            print("   • Check your API key is correct")
+            print("   • Ensure your API key has streaming permissions")
+            return None
+        elif response.status_code == 403:
+            print("❌ FORBIDDEN ERROR (403)")
+            print("   • Your account may not have streaming access")
+            print("   • Check if your account is verified and funded")
+            return None
+        elif response.status_code == 404:
+            print(f"❌ NOT FOUND ERROR (404)")
+            print(f"   • Check instrument name: {instrument}")
+            print(f"   • URL used: {stream_url}")
+            return None
+        elif response.status_code != 200:
+            print(f"❌ HTTP ERROR {response.status_code}")
+            print(f"   Response: {response.text}")
+            return None
+        
+        print("✅ Streaming connection established!")
+        print("📈 Receiving live price updates...")
+        print("   Press Ctrl+C to stop streaming")
+        print("-" * 50)
+        
+        start_time = time.time()
+        price_count = 0
+        previous_price = None
+        
+        # Process streaming data line by line
+        for line in response.iter_lines():
+            # Check duration limit
+            if max_duration and (time.time() - start_time) > max_duration:
+                print(f"\n⏰ Reached maximum duration of {max_duration} seconds")
+                break
+                
+            if line:
+                try:
+                    # Parse JSON data
+                    data = json.loads(line.decode('utf-8'))
+                    
+                    # Handle different types of messages
+                    if data.get('type') == 'PRICE':
+                        timestamp = datetime.now()
+                        
+                        # Extract price information
+                        instrument_name = data.get('instrument', instrument)
+                        
+                        # Get bid/ask prices
+                        bids = data.get('bids', [])
+                        asks = data.get('asks', [])
+                        
+                        if bids and asks:
+                            bid_price = round(float(bids[0]['price']), precision)
+                            ask_price = round(float(asks[0]['price']), precision)   
+                            mid_price = round((bid_price + ask_price) / 2, precision)
+                            spread_pips = (ask_price - bid_price) * 10000  # For most pairs
+                            
+                            # Skip if price hasn't changed
+                            if previous_price is not None and bid_price == previous_price:
+                                continue
+                            
+                            # Update previous price
+                            previous_price = bid_price
+                            price_count += 1
+                            
+                            # Create price dictionary
+                            price_data = {
+                                'timestamp': timestamp,
+                                'instrument': instrument_name,
+                                'bid': bid_price,
+                                'ask': ask_price,
+                                'price': mid_price,  # Mid price for compatibility
+                                'spread_pips': round(spread_pips, 1),
+                                'time': data.get('time', timestamp.isoformat()),
+                                'tradeable': data.get('tradeable', True)
+                            }
+                            
+                            # # Print price update (every 10th update to avoid spam)
+                            # if price_count % 10 == 0:
+                            #     print(f"💰 {timestamp.strftime('%H:%M:%S')} | {instrument_name} | "
+                            #           f"Bid: {bid_price:.5f} | Ask: {ask_price:.5f} | "
+                            #           f"Mid: {mid_price:.5f} | Spread: {spread_pips:.1f} pips")
+                            
+                            # Call callback function if provided
+                            if callback:
+                                try:
+                                    callback(timestamp, instrument_name, bid_price, ask_price, mid_price)
+                                except Exception as e:
+                                    print(f"⚠️  Callback error: {e}")
+                            
+                            # Yield price data for generator usage
+                            yield price_data
+                            
+                    elif data.get('type') == 'HEARTBEAT':
+                        # Heartbeat to keep connection alive
+                        if price_count % 100 == 0:  # Print occasionally
+                            print(f"💓 Heartbeat - Connection alive ({price_count} prices received)")
+                    
+                    else:
+                        # Other message types
+                        print(f"📨 Message: {data.get('type', 'Unknown')} - {data}")
+                        
+                except json.JSONDecodeError as e:
+                    print(f"⚠️  JSON decode error: {e}")
+                    continue
+                except Exception as e:
+                    print(f"⚠️  Processing error: {e}")
+                    continue
+        
+        print(f"\n✅ Streaming completed. Total prices received: {price_count}")
+        
+    except KeyboardInterrupt:
+        print(f"\n🛑 Streaming stopped by user. Total prices received: {price_count}")
+    except requests.exceptions.Timeout:
+        print("❌ TIMEOUT ERROR: Streaming request timed out")
+    except requests.exceptions.ConnectionError:
+        print("❌ CONNECTION ERROR: Lost connection to OANDA")
+    except Exception as e:
+        print(f"❌ UNEXPECTED ERROR: {e}")
+    finally:
+        if 'response' in locals():
+            response.close()
+
+
+def get_instrument_precision(url, api_key, account_id, instrument_name):
+    """
+    Retrieves the display precision (decimal places) for a financial instrument from OANDA.
+
+    Makes an authenticated request to the OANDA API to get instrument details and 
+    returns the number of decimal places used for price display.
+
+    Args:
+        url (str): The OANDA API base URL (e.g., 'https://api-fxtrade.oanda.com').
+        api_key (str): Your OANDA API key.
+        account_id (str): Your OANDA account ID.
+        instrument_name (str): The instrument name (e.g., 'EUR_USD', 'USD_CAD').
+
+    Returns:
+        int: Number of decimal places for price display, or None if instrument not found or error occurs.
+    """
+
+    endpoint = f"{url}/v3/accounts/{account_id}/instruments"
+    headers = {'Authorization': f'Bearer {api_key}'}
+    params = None
+    data = None
+    
+    try:
+        response = requests.get(endpoint, headers=headers, params=params, data=data)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        
+        instruments = response.json()['instruments']
+        
+        for instrument in instruments:
+            if instrument['name'] == instrument_name:
+                return instrument['displayPrecision']
+                
+        return None # Instrument not found
+        
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return None
+    
+
+def get_oanda_data(api_key, account_id, instrument='USD_CAD', granularity='S5', hours=5):
+    """
+    Connect to OANDA live fxtrade environment and fetch real market data
+    
+    Parameters:
+    -----------
+    api_key : str
+        Your OANDA API key from live account
+    account_id : str
+        Your OANDA live account ID
+    instrument : str, default='USD_CAD'
+        Currency pair to fetch
+    granularity : str, default='S5'
+        Time granularity (S5 = 5 seconds)
+    hours : int, default=10
+        Number of hours of historical data to fetch
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        DataFrame with real market data
+    """
+    
+    # LIVE OANDA API URL (NOT practice!)
+    BASE_URL = "https://api-fxtrade.oanda.com"
+    
+    print("🔴 CONNECTING TO OANDA LIVE FXTRADE ENVIRONMENT")
+    print("=" * 55)
+    print("⚠️  WARNING: This will connect to LIVE market data")
+    print(f"📊 Requesting: {instrument} | {granularity} | Last {hours} hours")
+    print("=" * 55)
+    
+    # Validate inputs
+    if not api_key or api_key == "your_live_api_key_here":
+        print("❌ ERROR: Live API key is required!")
+        print("\n🔧 TO GET YOUR LIVE OANDA CREDENTIALS:")
+        print("1. Log into your OANDA account at: https://www.oanda.com/")
+        print("2. Go to 'Manage API Access' in account settings")
+        print("3. Generate a Personal Access Token")
+        print("4. Copy your Account ID from account overview")
+        print("\n💡 USAGE:")
+        print("live_data = connect_oanda_live(")
+        print("    api_key='your_actual_api_key',")
+        print("    account_id='your_actual_account_id'")
+        print(")")
+        return None
+    
+    if not account_id or account_id == "your_live_account_id_here":
+        print("❌ ERROR: Live Account ID is required!")
+        return None
+    
+    # Headers for API request
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
+    
+    # Calculate count based on granularity and hours
+    if granularity == 'S5':
+        count = min(hours * 60 * 12, 5000)  # 12 five-second intervals per minute, max 5000
+    elif granularity == 'S10':
+        count = min(hours * 60 * 6, 5000)   # 6 ten-second intervals per minute
+    elif granularity == 'M1':
+        count = min(hours * 60, 5000)       # 60 one-minute intervals per hour
+    elif granularity == 'M5':
+        count = min(hours * 12, 5000)       # 12 five-minute intervals per hour
+    else:
+        count = min(7200, 5000)  # Default fallback
+    
+    # API endpoint for historical candles
+    url = f"{BASE_URL}/v3/instruments/{instrument}/candles"
+    
+    # Parameters for the request
+    params = {
+        'count': count,
+        'granularity': granularity#,
+        # 'price': 'MBA',  # Mid, Bid, Ask prices
+        # 'includeFirst': 'true'
+    }
+    
+    try:
+        print(f"🌐 Making API request to OANDA live servers...")
+        print(f"   URL: {url}")
+        print(f"   Params: {params}")
+        
+        # Make the API request
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        
+        # Check for HTTP errors
+        if response.status_code == 401:
+            print("❌ AUTHENTICATION ERROR (401)")
+            print("   • Check your API key is correct")
+            print("   • Ensure your API key has proper permissions")
+            print("   • Verify you're using the live account API key")
+            return None
+        elif response.status_code == 403:
+            print("❌ FORBIDDEN ERROR (403)")
+            print("   • Your account may not have API access enabled")
+            print("   • Check if your account is verified and funded")
+            return None
+        elif response.status_code == 404:
+            print("❌ NOT FOUND ERROR (404)")
+            print(f"   • Check instrument name: {instrument}")
+            print(f"   • Check granularity: {granularity}")
+            return None
+        elif response.status_code != 200:
+            print(f"❌ HTTP ERROR {response.status_code}")
+            print(f"   Response: {response.text}")
+            return None
+        
+        # Parse JSON response
+        data = response.json()
+        
+        if 'candles' not in data:
+            print("❌ ERROR: No candles data in response")
+            print(f"Response: {data}")
+            return None
+        
+        candles = data['candles']
+        print(f"✅ Successfully received {len(candles)} candles from OANDA live")
+        
+        # Convert to DataFrame
+        market_data = []
+        for candle in candles:
+            # Convert timestamp to New York timezone and remove timezone info
+            timestamp = pd.to_datetime(candle['time'])
+            # Convert to New York timezone
+            timestamp = timestamp.tz_convert('America/New_York')
+            # Remove timezone info (localize to None)
+            timestamp = timestamp.tz_localize(None)
+            
+            # Extract OHLC data
+            mid = candle.get('mid', {})
+            bid = candle.get('bid', {})
+            ask = candle.get('ask', {})
+            
+            if not mid:
+                continue  # Skip if no mid prices
+            
+            # Get prices
+            open_price = float(mid['o'])
+            high_price = float(mid['h'])
+            low_price = float(mid['l'])
+            close_price = float(mid['c'])
+            
+            bid_price = float(bid.get('c', close_price - 0.0001))
+            ask_price = float(ask.get('c', close_price + 0.0001))
+            
+            # Calculate spread in pips (for USD/CAD, 1 pip = 0.0001)
+            spread_pips = (ask_price - bid_price) * 10000
+            
+            market_data.append({
+                'timestamp': timestamp,
+                'open': open_price,
+                'high': high_price,
+                'low': low_price,
+                'close': close_price,
+                'mid': close_price,
+                'bid': bid_price,
+                'ask': ask_price,
+                'volume': candle.get('volume', 0),
+                'spread_pips': round(spread_pips, 1),
+                'complete': candle.get('complete', True)
+            })
+        
+        if not market_data:
+            print("❌ ERROR: No valid market data received")
+            return None
+        
+        # Create DataFrame
+        df = pd.DataFrame(market_data)
+        
+        # Add price column for compatibility with EMA functions
+        df['price'] = df['close']
+        
+        # Sort by timestamp to ensure chronological order
+        df = df.sort_values('timestamp').reset_index(drop=True)
+        
+        print(f"\n📊 LIVE MARKET DATA SUMMARY:")
+        print(f"   • Instrument: {instrument}")
+        print(f"   • Granularity: {granularity}")
+        print(f"   • Total candles: {len(df):,}")
+        print(f"   • Time range: {df['timestamp'].min()} to {df['timestamp'].max()}")
+        print(f"   • Price range: {df['close'].min():.5f} - {df['close'].max():.5f}")
+        print(f"   • Current price: {df['close'].iloc[-1]:.5f}")
+        print(f"   • Average spread: {df['spread_pips'].mean():.1f} pips")
+        
+        # # Show latest data
+        # print(f"\n📈 LATEST 3 CANDLES:")
+        # latest_cols = ['timestamp', 'open', 'high', 'low', 'close', 'bid', 'ask', 'spread_pips']
+        # print(df[latest_cols].tail(3).to_string(index=False, float_format='%.5f'))
+        
+
+        # return the dataframe with timestamp and  price columns
+        return df[['timestamp', 'price']]
+    
+    except Exception as e:
+        print(f"❌ ERROR: {e}")
+        return None
+        
+
+# Load secrets from secrets.json
+with open('secrets.json', 'r') as f:
+    secrets = json.load(f)
+
+url = secrets['url']
+api_key = secrets['api_key']
+account_id = secrets['account_id']
+instrument = input("Instrument (e.g., USD_CAD): ")
+
+print(f'api_key: {api_key}, account_id: {account_id}, instrument: {instrument}')
+
+precision = get_instrument_precision(url, api_key, account_id, instrument)  # Get precision from the mean price
+purple = Algo(interval='15min')  # Create an instance of the Algo class with 15-minute intervals
+
+# Start the web server in a separate thread
+import threading
+from live_graph_server import run_server, graph_updater
+
+# Start the Flask server in a background thread
+server_thread = threading.Thread(target=run_server, daemon=True)
+server_thread.start()
+
+print("🌐 Live graph server started at http://127.0.0.1:5000")
+print("Open your web browser and navigate to the URL above to see the live graph")
+print("📝 Controls: Spacebar = pause/resume updates, R = refresh now")
+
+# Wait a moment for server to start
+time.sleep(3)
+
+# Before streaming, get the historical data for that instrument from oanda
+historical_data = get_oanda_data(
+    api_key=api_key,
+    account_id=account_id,
+    instrument=instrument,
+    granularity='S5',  # 5-second granularity
+    hours=8  # Fetch 1 hour of historical data
+)
+print(historical_data)
+# put historical data into a CSV
+historical_df = pd.DataFrame(historical_data)
+historical_df['timestamp'] = pd.to_datetime(historical_df['timestamp'])
+historical_df = historical_df.drop_duplicates(subset=['timestamp'], keep='last')
+# historical_df.to_csv('historical_data.csv', index=False)
+
+
+# for each row in historical_df, process it with the Algo instance
+for _, row in historical_df.iterrows():
+    timestamp = row['timestamp']
+    price = round(row['price'], precision)
+    
+    # Process the historical data row with the Algo instance
+    return_dict = purple.process_row(timestamp, price, precision)
+    
+    # Update the live graph with historical data
+    graph_updater.update_graph(return_dict)
+
+
+# Stream live prices from OANDA and process them with the Algo instance
+for price in stream_oanda_live_prices(api_key, account_id, instrument):
+    return_dict = purple.process_row(price['timestamp'], price['bid'], precision)
+    
+    # Update the live graph
+    graph_updater.update_graph(return_dict)
+
