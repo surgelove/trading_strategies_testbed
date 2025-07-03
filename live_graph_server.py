@@ -20,7 +20,9 @@ live_data = {
     'temas': deque(maxlen=maxlen),
     'cross_ups': deque(maxlen=maxlen),
     'cross_downs': deque(maxlen=maxlen),
-    'mamplitudes': deque(maxlen=maxlen)
+    'mamplitudes': deque(maxlen=maxlen),
+    'min_prices': deque(maxlen=maxlen),
+    'max_prices': deque(maxlen=maxlen)
 }
 
 class LiveGraphUpdater:
@@ -38,13 +40,17 @@ class LiveGraphUpdater:
             cross_direction = return_dict['Cross_Direction']
             cross_price_up = return_dict['Cross_Price_Up']
             cross_price_down = return_dict['Cross_Price_Down']
-            
+            min_price = return_dict['Min_Price']
+            max_price = return_dict['Max_Price']
+
             # Add data to collections
             live_data['timestamps'].append(timestamp)
             live_data['prices'].append(price)
             live_data['emas'].append(ema)
             live_data['temas'].append(tema)
             live_data['mamplitudes'].append(mamplitude)
+            live_data['min_prices'].append(min_price)
+            live_data['max_prices'].append(max_price)
             
             # Handle cross points
             live_data['cross_ups'].append(cross_price_up)
@@ -58,6 +64,8 @@ class LiveGraphUpdater:
                 'tema': tema,
                 'mamplitude': mamplitude,
                 'cross_direction': cross_direction,
+                'min_price': min_price,
+                'max_price': max_price,
                 'data_points': len(live_data['timestamps'])
             }
                     
@@ -82,6 +90,8 @@ class LiveGraphUpdater:
                 temas_list = list(live_data['temas'])
                 cross_ups_list = list(live_data['cross_ups'])
                 cross_downs_list = list(live_data['cross_downs'])
+                min_prices_list = list(live_data['min_prices'])
+                max_prices_list = list(live_data['max_prices'])
                 mamplitudes_list = list(live_data['mamplitudes'])
                 
                 # Find start and end indices
@@ -110,6 +120,8 @@ class LiveGraphUpdater:
                 cross_ups_filtered = cross_ups_list[start_idx:end_idx]
                 cross_downs_filtered = cross_downs_list[start_idx:end_idx]
                 mamplitudes_filtered = mamplitudes_list[start_idx:end_idx]
+                min_prices_filtered = min_prices_list[start_idx:end_idx]
+                max_prices_filtered = max_prices_list[start_idx:end_idx]
             else:
                 # Use all data
                 timestamps_filtered = list(live_data['timestamps'])
@@ -119,6 +131,8 @@ class LiveGraphUpdater:
                 cross_ups_filtered = list(live_data['cross_ups'])
                 cross_downs_filtered = list(live_data['cross_downs'])
                 mamplitudes_filtered = list(live_data['mamplitudes'])
+                min_prices_filtered = list(live_data['min_prices'])
+                max_prices_filtered = list(live_data['max_prices'])
             
             if not timestamps_filtered:
                 return None
@@ -172,6 +186,24 @@ class LiveGraphUpdater:
                 'marker': {'symbol': 'triangle-down', 'size': 10, 'color': 'red'}
             }
             
+            # Min price trace
+            min_price_trace = {
+                'x': timestamps_str,
+                'y': min_prices_filtered,
+                'mode': 'markers',
+                'name': 'Min Price',
+                'marker': {'symbol': 'star', 'size': 10, 'color': 'darkred', 'opacity': 0.5}
+            }
+
+            # Max price trace
+            max_price_trace = {
+                'x': timestamps_str,
+                'y': max_prices_filtered,
+                'mode': 'markers',
+                'name': 'Max Price',
+                'marker': {'symbol': 'star', 'size': 10, 'color': 'darkgreen', 'opacity': 0.5}
+            }
+
             # MAmplitude trace
             mamplitude_trace = {
                 'x': timestamps_str,
@@ -194,7 +226,7 @@ class LiveGraphUpdater:
             }
             
             return {
-                'data': [price_trace, ema_trace, tema_trace, cross_up_trace, cross_down_trace, mamplitude_trace],
+                'data': [price_trace, ema_trace, tema_trace, cross_up_trace, cross_down_trace, min_price_trace, max_price_trace, mamplitude_trace],
                 'layout': layout
             }
             
@@ -256,9 +288,15 @@ def get_status():
 
 def run_server():
     """Run the Flask server"""
+    """Run the Flask server"""
     print("🌐 Starting Flask server...")
     print("📁 Template directory:", app.template_folder)
     try:
+        # Disable Flask logging
+        import logging
+        log = logging.getLogger('werkzeug')
+        log.setLevel(logging.ERROR)  # Only show errors, not request logs
+        
         app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False, threaded=True)
     except Exception as e:
         print(f"❌ Server error: {e}")

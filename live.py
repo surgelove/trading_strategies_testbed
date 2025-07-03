@@ -72,6 +72,7 @@ class Algo:
             self.enough_mamplitude = True  # Set flag if amplitude is greater than 0.02
 
         #  When tema crosses ema, detect the direction
+        take = False
         cross_direction = None
         cross_price = None
         cross_price_up = None
@@ -83,6 +84,7 @@ class Algo:
                     cross_price = price
                     cross_price_up = price  # Store the price at which the cross occurred
                     say_nonblocking("Cross up detected", voice="Alex")
+                    take = 1
                 # print('up', cross_price, timestamp, tema_values[-1], ema_values[-1])  # Print timestamp and values
                 else:
                     say_nonblocking("Cross up detected but not enough amplitude", voice="Alex")
@@ -94,6 +96,7 @@ class Algo:
                     cross_price = price
                     cross_price_down = price  # Store the price at which the cross occurred
                     say_nonblocking("Cross down detected", voice="Samantha")
+                    take = -1
                 else:
                     say_nonblocking("Cross down detected but not enough amplitude", voice="Samantha")
                 cross_direction = -1
@@ -138,7 +141,7 @@ class Algo:
         else:
             self.max_prices.append(None)
 
-        return {
+        return_dict = {
             'timestamp': timestamp,
             'price': price,
             'EMA': ema,
@@ -150,10 +153,12 @@ class Algo:
             'Cross_Price_Down': cross_price_down,
             'Min_Price': self.min_prices[-1],
             'Max_Price': self.max_prices[-1],
-            'Travel': travel
+            'Travel': travel,
+            # 'Take': take
         }
-        # print(f'{timestamp} - Price: {price}, EMA: {ema}, TEMA: {tema}, MAmplitude: {mamplitude}, Cross Direction: {cross_direction}, Travel: {travel}')
 
+        return take, return_dict
+        
 
 def say_nonblocking(text, voice=None):
     """
@@ -1191,6 +1196,7 @@ def get_oanda_data(api_key, account_id, instrument='USD_CAD', granularity='S5', 
         print(f"❌ ERROR: {e}")
         return None
         
+take = False
 
 # Load secrets from secrets.json
 with open('secrets.json', 'r') as f:
@@ -1243,7 +1249,7 @@ for _, row in historical_df.iterrows():
     price = round(row['price'], precision)
     
     # Process the historical data row with the Algo instance
-    return_dict = purple.process_row(timestamp, price, precision)
+    take, return_dict = purple.process_row(timestamp, price, precision)
     
     # Update the live graph with historical data
     graph_updater.update_graph(return_dict)
@@ -1253,7 +1259,11 @@ for _, row in historical_df.iterrows():
 def run_trading_script():
     # Stream live prices from OANDA and process them with the Algo instance
     for price in stream_oanda_live_prices(api_key, account_id, instrument):
-        return_dict = purple.process_row(price['timestamp'], price['bid'], precision)
+        take, return_dict = purple.process_row(price['timestamp'], price['bid'], precision)
+        # take = return_dict.get('Take', take)  # Update the 'take' variable if present
+        # print(return_dict)
+        if take:
+            say_nonblocking(f'We would take a trade now! {take}.')
         # Update the live graph
         graph_updater.update_graph(return_dict)
 
@@ -1269,6 +1279,13 @@ def say_hello():
     engine.say("Hello")
     engine.runAndWait()
 
+# Function to toggle the 'take' variable
+def toggle_take():
+    global take
+    take = not take
+    take_button.config(text=f"Take: {'ON' if take else 'OFF'}")
+    say_nonblocking(f"Take is now {'ON' if take else 'OFF'}")
+
 # Run the GUI in the main thread
 root = tk.Tk()
 root.title("Hello GUI")
@@ -1276,6 +1293,10 @@ root.title("Hello GUI")
 # Add a button to the GUI
 hello_button = tk.Button(root, text="Say Hello", command=say_hello)
 hello_button.pack(pady=20)
+
+# Add the toggle button for 'Take'
+take_button = tk.Button(root, text="Take: OFF", command=toggle_take)
+take_button.pack(pady=20)
 
 # Run the GUI event loop
 root.mainloop()

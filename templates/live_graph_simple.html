@@ -189,6 +189,15 @@
                 <div class="stat-value" id="current-mamplitude">--</div>
                 <div class="stat-label">MAmplitude %</div>
             </div>
+            <!-- In the stats div, add these items: -->
+            <div class="stat-item">
+                <div class="stat-value" id="min-price">--</div>
+                <div class="stat-label">Min Price</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="max-price">--</div>
+                <div class="stat-label">Max Price</div>
+            </div>
             <div class="stat-item">
                 <div class="stat-value" id="last-update">--</div>
                 <div class="stat-label">Last Update</div>
@@ -221,6 +230,8 @@
             document.getElementById('current-ema').textContent = data.ema ? data.ema.toFixed(5) : '--';
             document.getElementById('current-tema').textContent = data.tema ? data.tema.toFixed(5) : '--';
             document.getElementById('current-mamplitude').textContent = data.mamplitude ? data.mamplitude.toFixed(3) : '--';
+            document.getElementById('min-price').textContent = data.min_price ? data.min_price.toFixed(5) : '--';
+            document.getElementById('max-price').textContent = data.max_price ? data.max_price.toFixed(5) : '--';
             document.getElementById('last-update').textContent = data.timestamp || '--';
             document.getElementById('data-points').textContent = data.data_points || '--';
             
