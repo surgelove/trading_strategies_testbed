@@ -132,6 +132,37 @@
         .preset-btn.active {
             background-color: #3498db;
         }
+    .filter-controls {
+        background-color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .filter-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 10px;
+    }
+    
+    .filter-options label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        padding: 5px 10px;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+    }
+    
+    .filter-options label:hover {
+        background-color: #e9ecef;
+    }
+    
+    .filter-options input[type="checkbox"] {
+        margin-right: 5px;
+    }
     </style>
 </head>
 <body>
@@ -207,7 +238,24 @@
                 <div class="stat-label">Data Points</div>
             </div>
         </div>
-        
+
+        <!-- Add this new section -->
+        <div class="filter-controls">
+            <h3>📈 Data Series Visibility</h3>
+            <div class="filter-options">
+                <label><input type="checkbox" data-series="Price" checked> Price</label>
+                <label><input type="checkbox" data-series="EMA" checked> EMA</label>
+                <label><input type="checkbox" data-series="TEMA" checked> TEMA</label>
+                <label><input type="checkbox" data-series="Cross Up" checked> Cross Up</label>
+                <label><input type="checkbox" data-series="Cross Down" checked> Cross Down</label>
+                <label><input type="checkbox" data-series="Min Price" checked> Min Price</label>
+                <label><input type="checkbox" data-series="Max Price" checked> Max Price</label>
+                <label><input type="checkbox" data-series="MAmplitude" checked> MAmplitude</label>
+            </div>
+            <button class="btn" onclick="applyVisibilityFilters()">Apply Filters</button>
+            <button class="btn" onclick="resetVisibilityFilters()">Show All</button>
+        </div>
+    
         <div id="graph"></div>
         <div id="status" class="status disconnected">Connecting to server...</div>
         <div class="update-info">
@@ -402,6 +450,106 @@
             } else {
                 startUpdating();
             }
+        });
+
+        // Store visibility preferences
+        let seriesVisibility = {
+            'Price': true,
+            'EMA': true,
+            'TEMA': true,
+            'Cross Up': true,
+            'Cross Down': true,
+            'Min Price': true,
+            'Max Price': true,
+            'MAmplitude': true
+        };
+        
+        // Apply filters without fetching new data
+        function applyVisibilityFilters() {
+            // Update visibility preferences from checkboxes
+            document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(checkbox => {
+                const seriesName = checkbox.getAttribute('data-series');
+                seriesVisibility[seriesName] = checkbox.checked;
+            });
+            
+            // Get the current graph
+            const graphDiv = document.getElementById('graph');
+            if (!graphDiv || !graphDiv.data) return;
+            
+            // Apply visibility to existing traces
+            graphDiv.data.forEach(trace => {
+                if (trace.name in seriesVisibility) {
+                    Plotly.restyle(graphDiv, {visible: seriesVisibility[trace.name]}, [graphDiv.data.indexOf(trace)]);
+                }
+            });
+        }
+        
+        // Reset all filters to visible
+        function resetVisibilityFilters() {
+            document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            
+            Object.keys(seriesVisibility).forEach(key => {
+                seriesVisibility[key] = true;
+            });
+            
+            // Apply to graph
+            const graphDiv = document.getElementById('graph');
+            if (!graphDiv || !graphDiv.data) return;
+            
+            graphDiv.data.forEach(trace => {
+                Plotly.restyle(graphDiv, {visible: true}, [graphDiv.data.indexOf(trace)]);
+            });
+        }
+        
+        // Modify the updateGraph function to preserve visibility settings
+        function updateGraph() {
+            let url = '/plot_data';
+            if (!showAllDataMode && currentTimeRange) {
+                url += `?start_minutes=${currentTimeRange}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(plotData => {
+                    if (plotData && plotData.data && plotData.layout) {
+                        const graphDiv = document.getElementById('graph');
+                        
+                        // Apply visibility settings to the incoming data
+                        plotData.data.forEach(trace => {
+                            if (trace.name in seriesVisibility) {
+                                trace.visible = seriesVisibility[trace.name];
+                            }
+                        });
+                        
+                        Plotly.newPlot(graphDiv, plotData.data, plotData.layout, {
+                            responsive: true,
+                            displayModeBar: true,
+                            modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
+                        });
+                        
+                        // Update status
+                        document.getElementById('status').textContent = '✅ Connected - Live data updating';
+                        document.getElementById('status').className = 'status connected';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching plot data:', error);
+                    document.getElementById('status').textContent = '❌ Error fetching plot data: ' + error.message;
+                    document.getElementById('status').className = 'status disconnected';
+                });
+        }
+        
+        // Add this to page load to sync checkboxes with default visibility
+        window.addEventListener('load', function() {
+            // Set initial checkbox states
+            document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(checkbox => {
+                const seriesName = checkbox.getAttribute('data-series');
+                checkbox.checked = seriesVisibility[seriesName];
+            });
+            
+            setTimeout(startUpdating, 1000); // Wait 1 second for server to be ready
         });
     </script>
 </body>
