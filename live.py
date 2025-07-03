@@ -26,14 +26,18 @@ class Algo:
     - Supports all four MA types with time-based logic
     """
 
-    def __init__(self, interval):
+    def __init__(self, interval1, interval2):
         # 1. Create the calculator
-        self.ema_calc = TimeBasedStreamingMA(interval, ma_type='EMA')
-        self.tema_calc = TimeBasedStreamingMA(interval, ma_type='TEMA')
+        self.ema_calc = TimeBasedStreamingMA(interval1, ma_type='EMA')
+        self.tema_calc = TimeBasedStreamingMA(interval1, ma_type='TEMA')
+        self.xema_calc = TimeBasedStreamingMA(interval2, ma_type='EMA')
+        self.xtema_calc = TimeBasedStreamingMA(interval2, ma_type='TEMA')
 
         # initialize the json that will hold timestamp price and ema values
         self.ema_values = []
         self.tema_values = []
+        self.xema_values = []
+        self.xtema_values = []
         self.mamplitudes = []
 
         self.cross_directions = []  # List to hold cross direction
@@ -47,6 +51,11 @@ class Algo:
         self.max_price = None  # keeps track of the maximum price
         self.min_price_latest = None  # keeps track of the latest minimum price
         self.max_price_latest = None  # keeps track of the latest maximum price
+
+        self.xmin_prices = []  # List to hold minimum prices since cross down for xema
+        self.xmax_prices = []
+        self.xmin_price = None
+        self.xmax_price = None
 
         self.travels = []  # List to hold travel values
         self.travel = None  # keeps track of the travel from min to max after cross up
@@ -62,6 +71,45 @@ class Algo:
         self.ema_values.append(ema)  # EMA value
         self.tema_values.append(tema)  # TEMA value
 
+        xema = round(self.xema_calc.add_data_point(timestamp, price), precision)
+        xtema = round(self.xtema_calc.add_data_point(timestamp, price), precision)
+        self.xema_values.append(xema)
+        self.xtema_values.append(xtema)
+
+        # when xtema crosses xema, detect the direction
+        xcross_direction = None
+        if len(self.xema_values) > 1 and len(self.xtema_values) > 1:
+            if (self.xtema_values[-1] > self.xema_values[-1] and self.xtema_values[-2] <= self.xema_values[-2]):
+                xcross_direction = 1
+            elif (self.xtema_values[-1] < self.xema_values[-1] and self.xtema_values[-2] >= self.xema_values[-2]):
+                xcross_direction = -1
+        
+        # every row, calculate the min price of all prices since last cross down
+        if self.xmin_price is None:
+            self.xmin_price = price
+        if price < self.xmin_price:
+            self.xmin_price = price
+        if xcross_direction == 1:  # If last cross was down
+            self.xmin_prices.append(self.xmin_price)  # Append the minimum price since last cross down
+            self.xmin_price_latest = self.xmin_price  # Update latest min price
+            self.xmin_price = None  # Reset min price after cross down
+        else:
+            self.xmin_prices.append(None)
+
+        # every row, calculate the max price of all prices since last cross up
+        if self.xmax_price is None:
+            self.xmax_price = price
+        if price > self.xmax_price:
+            self.xmax_price = price
+        if xcross_direction == -1:  # If last cross was up
+            self.xmax_prices.append(self.xmax_price)  # Append the maximum price since last cross up
+            self.xmax_price_latest = self.xmax_price  # Update latest max price
+            self.xmax_price = None  # Reset max price after cross up
+        else:
+            self.xmax_prices.append(None)
+
+        # ---------------------------------------------
+        
         # Calculate the amplitude between EMA and TEMA
         mamplitude = None
         mamplitude_temp = round(abs(ema - tema), precision)  # Calculate the amplitude between EMA and TEMA
@@ -80,7 +128,6 @@ class Algo:
         if len(self.ema_values) > 1 and len(self.tema_values) > 1:
             if (self.tema_values[-1] > self.ema_values[-1] and self.tema_values[-2] <= self.ema_values[-2]):
                 if self.enough_mamplitude:
-                    self.enough_mamplitude = False  # Reset flag after cross up
                     cross_price = price
                     cross_price_up = price  # Store the price at which the cross occurred
                     say_nonblocking("Cross up detected", voice="Alex")
@@ -89,10 +136,11 @@ class Algo:
                 else:
                     say_nonblocking("Cross up detected but not enough amplitude", voice="Alex")
                 cross_direction = 1
-                print(f'{timestamp} - Price: {price}, EMA: {ema}, TEMA: {tema}, MAmplitude: {mamplitude}, Cross Direction: {cross_direction}')
+                print(f'{timestamp} - Price: {price}, EMA: {ema}, TEMA: {tema}, E MAmplitude: {self.enough_mamplitude}, Cross Direction: {cross_direction}')
+                self.enough_mamplitude = False  # Reset flag after cross up
+
             elif (self.tema_values[-1] < self.ema_values[-1] and self.tema_values[-2] >= self.ema_values[-2]):
                 if self.enough_mamplitude:
-                    self.enough_mamplitude = False
                     cross_price = price
                     cross_price_down = price  # Store the price at which the cross occurred
                     say_nonblocking("Cross down detected", voice="Samantha")
@@ -100,7 +148,8 @@ class Algo:
                 else:
                     say_nonblocking("Cross down detected but not enough amplitude", voice="Samantha")
                 cross_direction = -1
-                print(f'{timestamp } - Price: {price}, EMA: {ema}, TEMA: {tema}, MAmplitude: {mamplitude}, Cross Direction: {cross_direction}')
+                print(f'{timestamp } - Price: {price}, EMA: {ema}, TEMA: {tema}, E MAmplitude: {self.enough_mamplitude}, Cross Direction: {cross_direction}')
+                self.enough_mamplitude = False
         self.cross_directions.append(cross_direction)  # Append cross direction to the list
         self.cross_prices.append(cross_price)  # Append cross price to the list
         self.cross_prices_up.append(cross_price_up)  # Append cross price up to the list
@@ -153,6 +202,8 @@ class Algo:
             'Cross_Price_Down': cross_price_down,
             'Min_Price': self.min_prices[-1],
             'Max_Price': self.max_prices[-1],
+            'XMin_Price': self.xmin_prices[-1],
+            'XMax_Price': self.xmax_prices[-1],
             'Travel': travel,
             # 'Take': take
         }
@@ -1210,7 +1261,7 @@ instrument = input("Instrument (e.g., USD_CAD): ")
 print(f'api_key: {api_key}, account_id: {account_id}, instrument: {instrument}')
 
 precision = get_instrument_precision(url, api_key, account_id, instrument)  # Get precision from the mean price
-purple = Algo(interval='15min')  # Create an instance of the Algo class with 15-minute intervals
+purple = Algo(interval1='15min', interval2='5min')  # Create an instance of the Algo class with 15-minute intervals
 
 # Start the web server in a separate thread
 import threading

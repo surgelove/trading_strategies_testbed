@@ -22,7 +22,9 @@ live_data = {
     'cross_downs': deque(maxlen=maxlen),
     'mamplitudes': deque(maxlen=maxlen),
     'min_prices': deque(maxlen=maxlen),
-    'max_prices': deque(maxlen=maxlen)
+    'max_prices': deque(maxlen=maxlen),
+    'xmin_prices': deque(maxlen=maxlen),
+    'xmax_prices': deque(maxlen=maxlen)
 }
 
 class LiveGraphUpdater:
@@ -42,6 +44,8 @@ class LiveGraphUpdater:
             cross_price_down = return_dict['Cross_Price_Down']
             min_price = return_dict['Min_Price']
             max_price = return_dict['Max_Price']
+            xmin_price = return_dict['XMin_Price']  # Add XMin_Price
+            xmax_price = return_dict['XMax_Price']  # Add XMax_Price
 
             # Add data to collections
             live_data['timestamps'].append(timestamp)
@@ -51,6 +55,8 @@ class LiveGraphUpdater:
             live_data['mamplitudes'].append(mamplitude)
             live_data['min_prices'].append(min_price)
             live_data['max_prices'].append(max_price)
+            live_data['xmin_prices'].append(xmin_price)  # Add XMin_Price to live data
+            live_data['xmax_prices'].append(xmax_price)  # Add XMax_P
             
             # Handle cross points
             live_data['cross_ups'].append(cross_price_up)
@@ -66,6 +72,8 @@ class LiveGraphUpdater:
                 'cross_direction': cross_direction,
                 'min_price': min_price,
                 'max_price': max_price,
+                'xmin_price': xmin_price,  # Add XMin_Price
+                'xmax_price': xmax_price,  # Add XMax_Price
                 'data_points': len(live_data['timestamps'])
             }
                     
@@ -92,6 +100,8 @@ class LiveGraphUpdater:
                 cross_downs_list = list(live_data['cross_downs'])
                 min_prices_list = list(live_data['min_prices'])
                 max_prices_list = list(live_data['max_prices'])
+                xmin_prices_list = list(live_data['xmin_prices'])
+                xmax_prices_list = list(live_data['xmax_prices'])
                 mamplitudes_list = list(live_data['mamplitudes'])
                 
                 # Find start and end indices
@@ -122,6 +132,8 @@ class LiveGraphUpdater:
                 mamplitudes_filtered = mamplitudes_list[start_idx:end_idx]
                 min_prices_filtered = min_prices_list[start_idx:end_idx]
                 max_prices_filtered = max_prices_list[start_idx:end_idx]
+                xmin_prices_filtered = xmin_prices_list[start_idx:end_idx]
+                xmax_prices_filtered = xmax_prices_list[start_idx:end_idx]
             else:
                 # Use all data
                 timestamps_filtered = list(live_data['timestamps'])
@@ -133,6 +145,8 @@ class LiveGraphUpdater:
                 mamplitudes_filtered = list(live_data['mamplitudes'])
                 min_prices_filtered = list(live_data['min_prices'])
                 max_prices_filtered = list(live_data['max_prices'])
+                xmin_prices_filtered = list(live_data['xmin_prices'])
+                xmax_prices_filtered = list(live_data['xmax_prices'])
             
             if not timestamps_filtered:
                 return None
@@ -192,7 +206,7 @@ class LiveGraphUpdater:
                 'y': min_prices_filtered,
                 'mode': 'markers',
                 'name': 'Min Price',
-                'marker': {'symbol': 'star', 'size': 10, 'color': 'darkred', 'opacity': 0.5}
+                'marker': {'symbol': 'star', 'size': 10, 'color': 'darkred', 'opacity': 1}
             }
 
             # Max price trace
@@ -201,7 +215,24 @@ class LiveGraphUpdater:
                 'y': max_prices_filtered,
                 'mode': 'markers',
                 'name': 'Max Price',
-                'marker': {'symbol': 'star', 'size': 10, 'color': 'darkgreen', 'opacity': 0.5}
+                'marker': {'symbol': 'star', 'size': 10, 'color': 'darkgreen', 'opacity': 1}
+            }
+
+            xmin_price_trace = {
+                'x': timestamps_str,
+                'y': xmin_prices_filtered,
+                'mode': 'markers',
+                'name': 'XMin Price',
+                'marker': {'symbol': 'diamond', 'size': 8, 'color': 'darkred', 'opacity': 1}
+            }
+
+            # XMax price trace
+            xmax_price_trace = {
+                'x': timestamps_str,
+                'y': xmax_prices_filtered,
+                'mode': 'markers',
+                'name': 'XMax Price',
+                'marker': {'symbol': 'diamond', 'size': 8, 'color': 'darkgreen', 'opacity': 1}
             }
 
             # MAmplitude trace
@@ -226,7 +257,8 @@ class LiveGraphUpdater:
             }
             
             return {
-                'data': [price_trace, ema_trace, tema_trace, cross_up_trace, cross_down_trace, min_price_trace, max_price_trace, mamplitude_trace],
+                'data': [price_trace, ema_trace, tema_trace, cross_up_trace, cross_down_trace, 
+                        min_price_trace, max_price_trace, xmin_price_trace, xmax_price_trace, mamplitude_trace],
                 'layout': layout
             }
             
