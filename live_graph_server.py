@@ -21,6 +21,7 @@ live_data = {
     'cross_ups': deque(maxlen=maxlen),
     'cross_downs': deque(maxlen=maxlen),
     'mamplitudes': deque(maxlen=maxlen),
+    'pamplitudes': deque(maxlen=maxlen),
     'min_prices': deque(maxlen=maxlen),
     'max_prices': deque(maxlen=maxlen),
     'xmin_prices': deque(maxlen=maxlen),
@@ -39,6 +40,7 @@ class LiveGraphUpdater:
             ema = return_dict['EMA']
             tema = return_dict['TEMA']
             mamplitude = return_dict['MAmplitude']
+            pamplitude = return_dict['PAmplitude']
             cross_direction = return_dict['Cross_Direction']
             cross_price_up = return_dict['Cross_Price_Up']
             cross_price_down = return_dict['Cross_Price_Down']
@@ -53,6 +55,7 @@ class LiveGraphUpdater:
             live_data['emas'].append(ema)
             live_data['temas'].append(tema)
             live_data['mamplitudes'].append(mamplitude)
+            live_data['pamplitudes'].append(pamplitude)
             live_data['min_prices'].append(min_price)
             live_data['max_prices'].append(max_price)
             live_data['xmin_prices'].append(xmin_price)  # Add XMin_Price to live data
@@ -69,6 +72,7 @@ class LiveGraphUpdater:
                 'ema': ema,
                 'tema': tema,
                 'mamplitude': mamplitude,
+                'pamplitude': pamplitude,
                 'cross_direction': cross_direction,
                 'min_price': min_price,
                 'max_price': max_price,
@@ -103,6 +107,7 @@ class LiveGraphUpdater:
                 xmin_prices_list = list(live_data['xmin_prices'])
                 xmax_prices_list = list(live_data['xmax_prices'])
                 mamplitudes_list = list(live_data['mamplitudes'])
+                pamplitudes_list = list(live_data['pamplitudes'])
                 
                 # Find start and end indices
                 start_idx = 0
@@ -130,6 +135,7 @@ class LiveGraphUpdater:
                 cross_ups_filtered = cross_ups_list[start_idx:end_idx]
                 cross_downs_filtered = cross_downs_list[start_idx:end_idx]
                 mamplitudes_filtered = mamplitudes_list[start_idx:end_idx]
+                pamplitudes_filtered = pamplitudes_list[start_idx:end_idx]
                 min_prices_filtered = min_prices_list[start_idx:end_idx]
                 max_prices_filtered = max_prices_list[start_idx:end_idx]
                 xmin_prices_filtered = xmin_prices_list[start_idx:end_idx]
@@ -143,6 +149,7 @@ class LiveGraphUpdater:
                 cross_ups_filtered = list(live_data['cross_ups'])
                 cross_downs_filtered = list(live_data['cross_downs'])
                 mamplitudes_filtered = list(live_data['mamplitudes'])
+                pamplitudes_filtered = list(live_data['pamplitudes'])
                 min_prices_filtered = list(live_data['min_prices'])
                 max_prices_filtered = list(live_data['max_prices'])
                 xmin_prices_filtered = list(live_data['xmin_prices'])
@@ -244,7 +251,16 @@ class LiveGraphUpdater:
                 'line': {'color': 'orange', 'width': 2},
                 'yaxis': 'y2'
             }
-            
+
+            # PAmplitude trace
+            pamplitude_trace = {
+                'x': timestamps_str,
+                'y': pamplitudes_filtered,
+                'mode': 'lines',
+                'name': 'PAmplitude',
+                'line': {'color': 'lightblue', 'width': 2},
+                'yaxis': 'y2'
+            }
             # Layout
             layout = {
                 'title': f'Live Trading Data - EMA/TEMA Crossover Strategy ({len(timestamps_filtered)} points)',
@@ -253,12 +269,13 @@ class LiveGraphUpdater:
                 'hovermode': 'x unified',
                 'xaxis': {'title': 'Time'},
                 'yaxis': {'title': 'Price', 'side': 'left'},
-                'yaxis2': {'title': 'MAmplitude %', 'side': 'right', 'overlaying': 'y', 'range': [0, 0.1]}
+                'yaxis2': {'title': 'MAmplitude %', 'side': 'right', 'overlaying': 'y', 'range': [0, 0.1]},
+                'yaxis2': {'title': 'PAmplitude %', 'side': 'right', 'overlaying': 'y', 'range': [0, 0.1]},
             }
             
             return {
                 'data': [price_trace, ema_trace, tema_trace, cross_up_trace, cross_down_trace, 
-                        min_price_trace, max_price_trace, xmin_price_trace, xmax_price_trace, mamplitude_trace],
+                        min_price_trace, max_price_trace, xmin_price_trace, xmax_price_trace, pamplitude_trace, mamplitude_trace],
                 'layout': layout
             }
             

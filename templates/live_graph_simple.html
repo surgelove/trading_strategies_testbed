@@ -221,6 +221,10 @@
                 <div class="stat-label">MAmplitude %</div>
             </div>
             <div class="stat-item">
+                <div class="stat-value" id="current-pamplitude">--</div>
+                <div class="stat-label">PAmplitude %</div>
+            </div>
+            <div class="stat-item">
                 <div class="stat-value" id="last-update">--</div>
                 <div class="stat-label">Last Update</div>
             </div>
@@ -244,6 +248,7 @@
                 <label><input type="checkbox" data-series="XMin Price" checked> XMin Price</label>
                 <label><input type="checkbox" data-series="XMax Price" checked> XMax Price</label>
                 <label><input type="checkbox" data-series="MAmplitude" checked> MAmplitude</label>
+                <label><input type="checkbox" data-series="PAmplitude" checked> PAmplitude</label>
             </div>
             <button class="btn" onclick="applyVisibilityFilters()">Apply Filters</button>
             <button class="btn" onclick="resetVisibilityFilters()">Show All</button>
@@ -271,6 +276,7 @@
             document.getElementById('current-ema').textContent = data.ema ? data.ema.toFixed(5) : '--';
             document.getElementById('current-tema').textContent = data.tema ? data.tema.toFixed(5) : '--';
             document.getElementById('current-mamplitude').textContent = data.mamplitude ? data.mamplitude.toFixed(3) : '--';
+            document.getElementById('current-pamplitude').textContent = data.pamplitude ? data.pamplitude.toFixed(3) : '--';
             document.getElementById('last-update').textContent = data.timestamp || '--';
             document.getElementById('data-points').textContent = data.data_points || '--';
             
@@ -454,7 +460,8 @@
             'Max Price': true,
             'XMin Price': true,
             'XMax Price': true,
-            'MAmplitude': true
+            'MAmplitude': true,
+            'PAmplitude': true
         };
         
         // Apply filters without fetching new data
