@@ -289,140 +289,6 @@ def say_nonblocking(text, voice=None):
     thread.start()
 
 
-def purple(df, interval, precision):
-
-    # Clean df
-    df = df[['timestamp', 'price']].copy()  # Keep only necessary columns
-
-    # 1. Create the calculator
-    ema_calc = TimeBasedStreamingMA(interval, ma_type='EMA')
-    tema_calc = TimeBasedStreamingMA(interval, ma_type='TEMA')
-
-    # initialize the json that will hold timestamp price and ema values
-    ema_values = []
-    tema_values = []
-    mamplitudes = [] 
-
-    cross_directions = []  # List to hold cross direction
-    cross_prices = []  # List to hold cross price
-    cross_prices_up = []  # List to hold cross up prices
-    cross_prices_down = []  # List to hold cross down prices
-
-    min_prices = []  # List to hold minimum prices since cross down
-    max_prices = []  # List to hold maximum prices since cross up
-    min_price = None  # keeps track of the minimum price
-    max_price = None  # keeps track of the maximum price
-    min_price_latest = None  # keeps track of the latest minimum price
-    max_price_latest = None  # keeps track of the latest maximum price
-
-    travels = []  # List to hold travel values
-    travel = None  # keeps track of the travel from min to max after cross up
-
-    enough_mamplitude = False  # Flag to indicate if amplitude is greater than 0.02
-
-    # 2. Process the DataFrame
-    for _, row in df.iterrows():
-        # wait 1 second to simulate real-time processing
-        # time.sleep(1)  # Uncomment this line to simulate real-time processing
-        timestamp = row['timestamp']
-        price = round(row['price'], precision)
-
-        # Calculate EMA and TEMA for the current price
-        ema = round(ema_calc.add_data_point(timestamp, price), precision)
-        tema = round(tema_calc.add_data_point(timestamp, price), precision)
-        ema_values.append(ema)  # EMA value
-        tema_values.append(tema)  # TEMA value
-
-        # Calculate the amplitude between EMA and TEMA
-        mamplitude = None
-        mamplitude_temp = round(abs(ema - tema), precision)  # Calculate the amplitude between EMA and TEMA
-        # percent of price
-        mamplitude = round((mamplitude_temp / price) * 100, precision) if price != 0 else 0
-        mamplitudes.append(mamplitude)  # Append the amplitude to the list
-        if mamplitude > 0.008:
-            enough_mamplitude = True  # Set flag if amplitude is greater than 0.02
-
-        #  When tema crosses ema, detect the direction
-        cross_direction = None
-        cross_price = None
-        cross_price_up = None
-        cross_price_down = None
-        if len(ema_values) > 1 and len(tema_values) > 1:
-            if (tema_values[-1] > ema_values[-1] and tema_values[-2] <= ema_values[-2]):
-                if enough_mamplitude:
-                    enough_mamplitude = False  # Reset flag after cross up
-                    if price > ema:
-                        cross_direction = 1
-                        cross_price = price
-                        cross_price_up = price  # Store the price at which the cross occurred
-                # print('up', cross_price, timestamp, tema_values[-1], ema_values[-1])  # Print timestamp and values
-            elif (tema_values[-1] < ema_values[-1] and tema_values[-2] >= ema_values[-2]):
-                if enough_mamplitude:
-                    enough_mamplitude = False
-                    if price < ema:
-                        cross_direction = -1
-                        cross_price = price
-                        cross_price_down = price
-                    else:
-                        print(f'Price above! {timestamp} - Price: {price}, EMA: {ema}, TEMA: {tema}')
-                    
-
-                    # print('down', cross_price, timestamp, tema_values[-1], ema_values[-1])  # Print timestamp and values
-        cross_directions.append(cross_direction)  # Append cross direction to the list
-        cross_prices.append(cross_price)  # Append cross price to the list
-        cross_prices_up.append(cross_price_up)  # Append cross price up to the list
-        cross_prices_down.append(cross_price_down)  # Append cross price down to the list
-
-        # when it crosses up, calculate the travel from min to max
-        travel = None
-        if cross_direction == 1:  # If last cross was up
-            # Calculate the travel from min to max
-            if min_price_latest is not None and max_price_latest is not None:
-                travel = round(abs(max_price_latest - min_price_latest), precision)  # Travel from min to max
-            # convert travil to percentage of min price
-            if min_price_latest is not None and travel is not None:
-                travel = round((travel / min_price_latest) * 100, precision)
-        travels.append(travel)  # Append travel value to the list
-        
-        # every row, calculate the min price of all prices since last cross down
-        if min_price is None:
-            min_price = price
-        if price < min_price:
-            min_price = price
-        if cross_direction == 1:  # If last cross was down
-            min_prices.append(min_price)  # Append the minimum price since last cross down
-            min_price_latest = min_price  # Update latest min price
-            min_price = None  # Reset min price after cross down
-        else:
-            min_prices.append(None)
-
-        # every row, calculate the max price of all prices since last cross up
-        if max_price is None:
-            max_price = price
-        if price > max_price:
-            max_price = price
-        if cross_direction == -1:  # If last cross was up
-            max_prices.append(max_price)  # Append the maximum price since last cross up
-            max_price_latest = max_price  # Update latest max price
-            max_price = None  # Reset max price after cross up
-        else:
-            max_prices.append(None)
-
-    # 3. Add to DataFrame
-    df['EMA'] = ema_values
-    df['TEMA'] = tema_values
-    df['Cross_Direction'] = cross_directions  # Add cross direction
-    df['Cross_Price'] = cross_prices  # Add cross price
-    df['Cross_Price_Up'] = cross_prices_up  # Add cross price up
-    df['Cross_Price_Down'] = cross_prices_down  # Add cross price down
-    df['Min_Price'] = min_prices  # If you have minimum prices to track
-    df['Max_Price'] = max_prices  # If you have maximum prices to track
-    df['Travel'] = travels  # If you have travel values to track
-    df['MAmplitude'] = mamplitudes  # If you have MAmplitude values to track
-
-    return df
-
-
 class TimeBasedStreamingMA:
     """
     Time-based streaming moving average calculator that uses actual timestamps
@@ -782,99 +648,14 @@ class TimeBasedStreamingMA:
             self.last_timestamp = None
 
 
-def plot_bokeh_bk(df, columns_config, x_axis_label='Time'):
-    """
-    Plot up to 5 vertically stacked Bokeh graphs (upper and up to 5 lower) with dict input as specified.
-    The graphs are synchronized: zoom/pan/select in one affects the others.
-    Display output in the notebook.
-    """
-    output_notebook()  # <-- This makes Bokeh plots display in Jupyter notebooks
-
-    figs = []
-    default_colors = [
-        '#b9babc', 'blue', 'purple', 'black', 'green', 'red', '#9467bd', '#8c564b', '#e377c2',
-        '#7f7f7f', '#bcbd22', '#17becf', '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5'
-    ]
-
-    shared_x_range = None
-
-    # Support up to 5 lower graphs, keys: 'lower_graph', 'lower_graph2', ..., 'lower_graph5'
-    graph_keys = ['upper_graph'] + [f'lower_graph{i}' if i > 1 else 'lower_graph' for i in range(1, 6)]
-
-    for idx, graph_key in enumerate(graph_keys):
-        graph_cfg = columns_config.get(graph_key, {})
-        if not graph_cfg.get('display', True):
-            continue
-
-        graph_df = df[['timestamp']].copy()
-        for col, col_cfg in graph_cfg.get('columns', {}).items():
-            if 'values' in col_cfg:
-                graph_df[col] = col_cfg['values']
-            elif col in df.columns:
-                graph_df[col] = df[col]
-
-        source = ColumnDataSource(graph_df)
-        if idx == 0:
-            p = figure(
-                title=graph_cfg.get('title', ''),
-                x_axis_type='datetime',
-                width=800,
-                height=300,
-                x_axis_label=x_axis_label,
-                y_axis_label=graph_cfg.get('y_axis_label', '')
-            )
-            shared_x_range = p.x_range
-        else:
-            p = figure(
-                title=graph_cfg.get('title', ''),
-                x_axis_type='datetime',
-                width=800,
-                height=200,
-                x_axis_label=x_axis_label,
-                y_axis_label=graph_cfg.get('y_axis_label', ''),
-                x_range=shared_x_range
-            )
-
-        plotted_cols = []
-        for i, (col, col_cfg) in enumerate(graph_cfg.get('columns', {}).items()):
-            if not col_cfg.get('display', True) or col not in graph_df.columns:
-                continue
-            color = col_cfg.get('color', default_colors[i % len(default_colors)])
-            glyph_type = col_cfg.get('type', 'line')
-            width = col_cfg.get('width', 2)
-            alpha = col_cfg.get('alpha', 1.0)
-            if glyph_type != 'line':
-                p.scatter('timestamp', col, source=source, legend_label=col, size=width, color=color, alpha=alpha, marker=glyph_type)
-            else:
-                p.line('timestamp', col, source=source, legend_label=col, line_width=width, color=color, alpha=alpha)
-            plotted_cols.append(col)
-
-        hover_tooltips = [('Time', '@timestamp{%F %T}')]
-        for col in plotted_cols:
-            hover_tooltips.append((col, f'@{col}{{0.00000}}'))
-        hover = HoverTool()
-        hover.tooltips = hover_tooltips
-        hover.formatters = {'@timestamp': 'datetime'}
-        p.add_tools(hover)
-
-        p.legend.location = 'top_left'
-        p.legend.click_policy = "hide"
-        p.grid.grid_line_alpha = 0.3
-        figs.append(p)
-
-    show(column(*figs))
-
-
-def stream_oanda_live_prices(api_key, account_id, instrument='USD_CAD', callback=None, max_duration=None):
+def stream_oanda_live_prices(credentials, instrument='USD_CAD', callback=None, max_duration=None):
     """
     Stream live prices from OANDA API for a single instrument
     
     Parameters:
     -----------
-    api_key : str
-        Your OANDA live API key
-    account_id : str  
-        Your OANDA live account ID
+    credentials : dict
+        Dictionary containing 'api_key' and 'account_id'
     instrument : str, default='USD_CAD'
         Single instrument to stream (e.g., 'EUR_USD', 'GBP_JPY')
     callback : function, optional
@@ -887,6 +668,9 @@ def stream_oanda_live_prices(api_key, account_id, instrument='USD_CAD', callback
     generator or None
         Yields price dictionaries or None if connection fails
     """
+    
+    api_key = credentials.get('api_key')
+    account_id = credentials.get('account_id')
     
     # LIVE OANDA STREAMING API URL
     STREAM_URL = "https://stream-fxtrade.oanda.com"
@@ -930,7 +714,7 @@ def stream_oanda_live_prices(api_key, account_id, instrument='USD_CAD', callback
         
         # Get instrument precision - FIXED: Use the BASE API URL, not streaming URL
         BASE_API_URL = "https://api-fxtrade.oanda.com"
-        precision = get_instrument_precision(BASE_API_URL, api_key, account_id, instrument)
+        precision = get_instrument_precision(credentials, instrument)
         if precision is None:
             precision = 5  # Default precision
             print(f"⚠️  Using default precision: {precision}")
@@ -1064,7 +848,7 @@ def stream_oanda_live_prices(api_key, account_id, instrument='USD_CAD', callback
             response.close()
 
 
-def get_instrument_precision(url, api_key, account_id, instrument_name):
+def get_instrument_precision(credentials, instrument_name):
     """
     Retrieves the display precision (decimal places) for a financial instrument from OANDA.
 
@@ -1072,14 +856,16 @@ def get_instrument_precision(url, api_key, account_id, instrument_name):
     returns the number of decimal places used for price display.
 
     Args:
-        url (str): The OANDA API base URL (e.g., 'https://api-fxtrade.oanda.com').
-        api_key (str): Your OANDA API key.
-        account_id (str): Your OANDA account ID.
+        credentials (dict): Dictionary containing 'api_key' and 'account_id'
         instrument_name (str): The instrument name (e.g., 'EUR_USD', 'USD_CAD').
 
     Returns:
         int: Number of decimal places for price display, or None if instrument not found or error occurs.
     """
+    
+    api_key = credentials.get('api_key')
+    account_id = credentials.get('account_id')
+    url = "https://api-fxtrade.oanda.com"
 
     endpoint = f"{url}/v3/accounts/{account_id}/instruments"
     headers = {'Authorization': f'Bearer {api_key}'}
@@ -1103,16 +889,14 @@ def get_instrument_precision(url, api_key, account_id, instrument_name):
         return None
     
 
-def get_oanda_data(api_key, account_id, instrument='USD_CAD', granularity='S5', hours=5):
+def get_oanda_data(credentials, instrument='USD_CAD', granularity='S5', hours=5):
     """
     Connect to OANDA live fxtrade environment and fetch real market data
     
     Parameters:
     -----------
-    api_key : str
-        Your OANDA API key from live account
-    account_id : str
-        Your OANDA live account ID
+    credentials : dict
+        Dictionary containing 'api_key' and 'account_id'
     instrument : str, default='USD_CAD'
         Currency pair to fetch
     granularity : str, default='S5'
@@ -1125,6 +909,9 @@ def get_oanda_data(api_key, account_id, instrument='USD_CAD', granularity='S5', 
     pandas.DataFrame
         DataFrame with real market data
     """
+    
+    api_key = credentials.get('api_key')
+    account_id = credentials.get('account_id')
     
     # LIVE OANDA API URL (NOT practice!)
     BASE_URL = "https://api-fxtrade.oanda.com"
@@ -1144,10 +931,10 @@ def get_oanda_data(api_key, account_id, instrument='USD_CAD', granularity='S5', 
         print("3. Generate a Personal Access Token")
         print("4. Copy your Account ID from account overview")
         print("\n💡 USAGE:")
-        print("live_data = connect_oanda_live(")
-        print("    api_key='your_actual_api_key',")
-        print("    account_id='your_actual_account_id'")
-        print(")")
+        print("live_data = connect_oanda_live({")
+        print("    'api_key': 'your_actual_api_key',")
+        print("    'account_id': 'your_actual_account_id'")
+        print("})")
         return None
     
     if not account_id or account_id == "your_live_account_id_here":
@@ -1490,7 +1277,7 @@ def create_oanda_orders(credentials, instrument, side,
     Parameters:
     -----------
     credentials : dict
-        Dictionary containing 'token' and 'account_id'
+        Dictionary containing 'api_key' and 'account_id'
     instrument : str
         Trading instrument (e.g., 'USD_CAD')
     side : int
@@ -1517,11 +1304,11 @@ def create_oanda_orders(credentials, instrument, side,
         If True, cancel existing pending orders for the specified instrument and side (default False)
     """
     
-    token = credentials.get('token')
+    api_key = credentials.get('api_key')
     account_id = credentials.get('account_id')
     
-    if not token or not account_id:
-        return {"error": "Missing credentials: token and account_id required"}
+    if not api_key or not account_id:
+        return {"error": "Missing credentials: api_key and account_id required"}
     
     headers = {
         'Authorization': f'Bearer {token}',
@@ -1858,7 +1645,7 @@ def create_oanda_orders(credentials, instrument, side,
 
 # Sample credentials - replace with your actual credentials
 sample_credentials = {
-    'token': 'bdc30e0508827ff85bf58eaba6408bf5-e1fe94c6bfb8617a0bde3fa2c6c5b005',
+    'api_key': 'bdc30e0508827ff85bf58eaba6408bf5-e1fe94c6bfb8617a0bde3fa2c6c5b005',
     'account_id': '001-002-6172489-007'
 }
 
@@ -1868,14 +1655,9 @@ take = False
 with open('secrets.json', 'r') as f:
     secrets = json.load(f)
 
-url = secrets['url']
-api_key = secrets['api_key']
-account_id = secrets['account_id']
 instrument = input("Instrument (e.g., USD_CAD): ")
 
-print(f'api_key: {api_key}, account_id: {account_id}, instrument: {instrument}')
-
-precision = get_instrument_precision(url, api_key, account_id, instrument)  # Get precision from the mean price
+precision = get_instrument_precision(secrets, instrument)  # Get precision from the mean price
 purple = Algo(interval1='15min', interval2='2min')  # Create an instance of the Algo class with 15-minute intervals
 
 # Start the web server in a separate thread
@@ -1895,8 +1677,7 @@ time.sleep(3)
 
 # Before streaming, get the historical data for that instrument from oanda
 historical_data = get_oanda_data(
-    api_key=api_key,
-    account_id=account_id,
+    credentials=secrets,
     instrument=instrument,
     granularity='S5',  # 5-second granularity
     hours=8  # Fetch 1 hour of historical data
@@ -1933,7 +1714,7 @@ def run_trading_script():
         try:
             print(f"🔄 Starting/restarting OANDA price stream (attempt {retry_count + 1})")
             # Stream live prices from OANDA and process them with the Algo instance
-            for price in stream_oanda_live_prices(api_key, account_id, instrument):
+            for price in stream_oanda_live_prices(secrets, instrument):
                 take, return_dict = purple.process_row(price['timestamp'], price['bid'], precision)
                 if take:
                     say_nonblocking(f'We would take a trade now! {take}.')
