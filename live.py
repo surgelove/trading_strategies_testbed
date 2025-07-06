@@ -69,7 +69,7 @@ class Algo:
         self.cross_direction_previous = 0  # Previous cross direction
 
 
-    def process_row(self, timestamp, price, precision):
+    def process_row(self, timestamp, price, precision, say):
 
         threshold = 0.00005  # Threshold for ignoring min/max prices close to current price
         if not self.cross_price_previous:
@@ -172,11 +172,11 @@ class Algo:
                         if self.enough_mamplitude or self.enough_pamplitude:
                             cross_price = price
                             cross_price_up = price  # Store the price at which the cross occurred
-                            say_nonblocking("Cross up detected", voice="Alex")
+                            if say: say_nonblocking("Cross up detected", voice="Alex")
                             take = 1
                         # print('up', cross_price, timestamp, tema_values[-1], ema_values[-1])  # Print timestamp and values
                         else:
-                            say_nonblocking("Cross up detected but not enough amplitude", voice="Alex")
+                            if say: say_nonblocking("Cross up detected but not enough amplitude", voice="Alex")
                         cross_direction = 1
                         print(f'{timestamp} - Price: {price}, EMA: {ema}, TEMA: {tema}, E MAmplitude: {self.enough_mamplitude}, Cross Direction: {cross_direction}')
                         self.enough_mamplitude = False  # Reset flag after cross up
@@ -190,10 +190,10 @@ class Algo:
                         if self.enough_mamplitude or self.enough_pamplitude:
                             cross_price = price
                             cross_price_down = price  # Store the price at which the cross occurred
-                            say_nonblocking("Cross down detected", voice="Samantha")
+                            if say: say_nonblocking("Cross down detected", voice="Samantha")
                             take = -1
                         else:
-                            say_nonblocking("Cross down detected but not enough amplitude", voice="Samantha")
+                            if say: say_nonblocking("Cross down detected but not enough amplitude", voice="Samantha")
                         cross_direction = -1
                         print(f'{timestamp } - Price: {price}, EMA: {ema}, TEMA: {tema}, E MAmplitude: {self.enough_mamplitude}, Cross Direction: {cross_direction}')
                         self.enough_mamplitude = False
@@ -1696,7 +1696,7 @@ for _, row in historical_df.iterrows():
     price = round(row['price'], precision)
     
     # Process the historical data row with the Algo instance
-    take, return_dict = purple.process_row(timestamp, price, precision)
+    take, return_dict = purple.process_row(timestamp, price, precision, say=False)
     
     # Update the live graph with historical data
     graph_updater.update_graph(return_dict)
@@ -1715,7 +1715,7 @@ def run_trading_script():
             print(f"🔄 Starting/restarting OANDA price stream (attempt {retry_count + 1})")
             # Stream live prices from OANDA and process them with the Algo instance
             for price in stream_oanda_live_prices(secrets, instrument):
-                take, return_dict = purple.process_row(price['timestamp'], price['bid'], precision)
+                take, return_dict = purple.process_row(price['timestamp'], price['bid'], precision, say=True)
                 if take:
                     say_nonblocking(f'We would take a trade now! {take}.')
                 # Update the live graph
