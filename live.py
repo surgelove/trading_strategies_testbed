@@ -848,6 +848,184 @@ def stream_oanda_live_prices(credentials, instrument='USD_CAD', callback=None, m
             response.close()
 
 
+def stream_oanda_transactions(credentials, callback=None, max_duration=None):
+    """
+    Stream live transaction events from OANDA API (trades, orders, etc.)
+    
+    Parameters:
+    -----------
+    credentials : dict
+        Dictionary containing 'api_key' and 'account_id'
+    callback : function, optional
+        Function to call with each transaction: callback(transaction_data)
+    max_duration : int, optional
+        Maximum streaming duration in seconds (None = unlimited)
+    
+    Returns:
+    --------
+    generator
+        Yields transaction dictionaries
+    """
+    
+    api_key = credentials.get('api_key')
+    account_id = credentials.get('account_id')
+    
+    # OANDA STREAMING API URL
+    STREAM_URL = "https://stream-fxtrade.oanda.com"
+    
+    print("🔴 CONNECTING TO OANDA TRANSACTION STREAM")
+    print("=" * 50)
+    print("📊 Listening for: Orders, Trades, Fills, Modifications")
+    print("=" * 50)
+    
+    # Validate inputs
+    if not api_key or not account_id:
+        print("❌ ERROR: API key and Account ID are required!")
+        return None
+    
+    # Headers for streaming request
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Accept': 'application/stream+json',
+        'Content-Type': 'application/json'
+    }
+    
+    # Streaming endpoint for transactions
+    stream_url = f"{STREAM_URL}/v3/accounts/{account_id}/transactions/stream"
+    
+    try:
+        print(f"🌐 Initiating transaction stream connection...")
+        
+        # Make streaming request
+        response = requests.get(stream_url, headers=headers, stream=True, timeout=30)
+        
+        # Check for HTTP errors
+        if response.status_code != 200:
+            print(f"❌ HTTP ERROR {response.status_code}")
+            print(f"   Response: {response.text}")
+            return None
+        
+        print("✅ Transaction stream connection established!")
+        print("📈 Listening for transaction events...")
+        print("   Press Ctrl+C to stop streaming")
+        print("-" * 50)
+        
+        start_time = time.time()
+        transaction_count = 0
+        
+        # Process streaming data line by line
+        for line in response.iter_lines():
+            # Check duration limit
+            if max_duration and (time.time() - start_time) > max_duration:
+                print(f"\n⏰ Reached maximum duration of {max_duration} seconds")
+                break
+                
+            if line:
+                try:
+                    # Parse JSON data
+                    data = json.loads(line.decode('utf-8'))
+                    
+                    # Handle different types of transaction messages
+                    transaction_type = data.get('type')
+                    
+                    if transaction_type == 'ORDER_FILL':
+                        # Trade execution
+                        instrument = data.get('instrument')
+                        units = data.get('units')
+                        price = data.get('price')
+                        time_stamp = data.get('time')
+                        trade_id = data.get('tradeOpened', {}).get('tradeID')
+                        
+                        side = "BUY" if float(units) > 0 else "SELL"
+                        
+                        print(f"🎯 TRADE FILLED: {side} {abs(float(units))} {instrument} @ {price}")
+                        print(f"   Trade ID: {trade_id}")
+                        print(f"   Time: {time_stamp}")
+                        
+                        # Speak the trade execution
+                        if side == "BUY":
+                            say_nonblocking(f"Trade executed! Bought {instrument} at {price}", voice="Alex")
+                        else:
+                            say_nonblocking(f"Trade executed! Sold {instrument} at {price}", voice="Samantha")
+                        
+                    elif transaction_type == 'ORDER_CANCEL':
+                        # Order cancellation
+                        order_id = data.get('orderID')
+                        reason = data.get('reason')
+                        print(f"❌ ORDER CANCELLED: Order ID {order_id} - Reason: {reason}")
+                        
+                    elif transaction_type == 'STOP_LOSS_FILL':
+                        # Stop loss triggered
+                        instrument = data.get('instrument')
+                        units = data.get('units')
+                        price = data.get('price')
+                        trade_id = data.get('tradeID')
+                        
+                        print(f"🛑 STOP LOSS TRIGGERED: {instrument} @ {price}")
+                        print(f"   Trade ID: {trade_id}")
+                        say_nonblocking(f"Stop loss triggered on {instrument} at {price}", voice="Victoria")
+                        
+                    elif transaction_type == 'TAKE_PROFIT_FILL':
+                        # Take profit triggered
+                        instrument = data.get('instrument')
+                        units = data.get('units')
+                        price = data.get('price')
+                        trade_id = data.get('tradeID')
+                        
+                        print(f"🎯 TAKE PROFIT HIT: {instrument} @ {price}")
+                        print(f"   Trade ID: {trade_id}")
+                        say_nonblocking(f"Take profit hit on {instrument} at {price}", voice="Alex")
+                        
+                    elif transaction_type == 'MARKET_ORDER':
+                        # Market order created
+                        instrument = data.get('instrument')
+                        units = data.get('units')
+                        side = "BUY" if float(units) > 0 else "SELL"
+                        
+                        print(f"📋 MARKET ORDER CREATED: {side} {abs(float(units))} {instrument}")
+                        
+                    elif transaction_type == 'HEARTBEAT':
+                        # Heartbeat to keep connection alive
+                        if transaction_count % 50 == 0:  # Print occasionally
+                            print(f"💓 Transaction stream heartbeat ({transaction_count} transactions)")
+                    
+                    else:
+                        # Other transaction types
+                        print(f"📨 Transaction: {transaction_type} - {data}")
+                    
+                    transaction_count += 1
+                    
+                    # Call callback function if provided
+                    if callback:
+                        try:
+                            callback(data)
+                        except Exception as e:
+                            print(f"⚠️  Callback error: {e}")
+                    
+                    # Yield transaction data for generator usage
+                    yield data
+                        
+                except json.JSONDecodeError as e:
+                    print(f"⚠️  JSON decode error: {e}")
+                    continue
+                except Exception as e:
+                    print(f"⚠️  Processing error: {e}")
+                    continue
+        
+        print(f"\n✅ Transaction streaming completed. Total events: {transaction_count}")
+        
+    except KeyboardInterrupt:
+        print(f"\n🛑 Transaction streaming stopped by user. Total events: {transaction_count}")
+    except requests.exceptions.Timeout:
+        print("❌ TIMEOUT ERROR: Transaction stream timed out")
+    except requests.exceptions.ConnectionError:
+        print("❌ CONNECTION ERROR: Lost connection to OANDA transaction stream")
+    except Exception as e:
+        print(f"❌ UNEXPECTED ERROR: {e}")
+    finally:
+        if 'response' in locals():
+            response.close()
+
 def get_instrument_precision(credentials, instrument_name):
     """
     Retrieves the display precision (decimal places) for a financial instrument from OANDA.
@@ -1709,6 +1887,19 @@ def run_trading_script():
     max_retries = 10  # Maximum number of reconnection attempts
     retry_count = 0
     retry_delay = 5  # Initial delay in seconds between retries
+    
+    # Start transaction streaming in a separate thread
+    def run_transaction_stream():
+        try:
+            for transaction in stream_oanda_transactions(sample_credentials):
+                # Transaction events are automatically handled in the stream function
+                pass
+        except Exception as e:
+            print(f"❌ Transaction stream error: {e}")
+    
+    # Start transaction streaming thread
+    transaction_thread = threading.Thread(target=run_transaction_stream, daemon=True)
+    transaction_thread.start()
     
     while True:
         try:
