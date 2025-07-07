@@ -1888,14 +1888,43 @@ def run_trading_script():
     retry_count = 0
     retry_delay = 5  # Initial delay in seconds between retries
     
-    # Start transaction streaming in a separate thread
+    # Start transaction streaming in a separate thread with reconnection logic
     def run_transaction_stream():
-        try:
-            for transaction in stream_oanda_transactions(sample_credentials):
-                # Transaction events are automatically handled in the stream function
-                pass
-        except Exception as e:
-            print(f"❌ Transaction stream error: {e}")
+        """Stream live transactions from OANDA with automatic reconnection."""
+        transaction_max_retries = 10
+        transaction_retry_count = 0
+        transaction_retry_delay = 5
+        
+        while True:
+            try:
+                print(f"🔄 Starting/restarting OANDA transaction stream (attempt {transaction_retry_count + 1})")
+                
+                # Stream transactions with reconnection
+                for transaction in stream_oanda_transactions(sample_credentials):
+                    # Transaction events are automatically handled in the stream function
+                    # Reset retry count on successful data
+                    transaction_retry_count = 0
+                    transaction_retry_delay = 5
+                    
+                # If we exit the loop normally (generator ended), we should reconnect
+                print("⚠️ Transaction stream ended. Attempting to reconnect...")
+                transaction_retry_count += 1
+                
+            except Exception as e:
+                # Handle any exceptions that might occur during transaction streaming
+                transaction_retry_count += 1
+                print(f"❌ Error in transaction stream: {e}")
+                print(f"⏱️ Reconnecting transaction stream in {transaction_retry_delay} seconds...")
+            
+            # Check if we've exceeded max retries for transactions
+            if transaction_max_retries > 0 and transaction_retry_count >= transaction_max_retries:
+                print(f"❌ Transaction stream failed to connect after {transaction_max_retries} attempts. Giving up.")
+                say_nonblocking("Transaction stream connection failed after multiple attempts.", voice="Victoria")
+                break
+                
+            # Exponential backoff for transaction retry delay (up to 60 seconds)
+            time.sleep(transaction_retry_delay)
+            transaction_retry_delay = min(transaction_retry_delay * 1.5, 60)  # Increase delay, but cap at 60 seconds
     
     # Start transaction streaming thread
     transaction_thread = threading.Thread(target=run_transaction_stream, daemon=True)
