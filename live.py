@@ -12,6 +12,7 @@ import requests
 import tkinter as tk
 from tkinter import messagebox
 import pyttsx3
+from live_graph_server import run_server, graph_updater
 
 
 class Algo:
@@ -1046,7 +1047,93 @@ def stream_oanda_transactions(credentials, callback=None, max_duration=None):
         if 'response' in locals():
             response.close()
 
+
+def run_trading_script():
+    """Stream live prices from OANDA and process them with the Algo instance,
+    automatically reconnecting if the connection fails."""
+    max_retries = 10  # Maximum number of reconnection attempts
+    retry_count = 0
+    retry_delay = 5  # Initial delay in seconds between retries
+    
+    # Start transaction streaming in a separate thread with reconnection logic
+    def run_transaction_stream():
+        """Stream live transactions from OANDA with automatic reconnection."""
+        transaction_max_retries = 10
+        transaction_retry_count = 0
+        transaction_retry_delay = 5
+        
+        while True:
+            try:
+                print(f"🔄 Starting/restarting OANDA transaction stream (attempt {transaction_retry_count + 1})")
+                
+                # Stream transactions with reconnection
+                for transaction in stream_oanda_transactions(sample_credentials):
+                    # Transaction events are automatically handled in the stream function
+                    # Reset retry count on successful data
+                    transaction_retry_count = 0
+                    transaction_retry_delay = 5
+                    
+                # If we exit the loop normally (generator ended), we should reconnect
+                print("⚠️ Transaction stream ended. Attempting to reconnect...")
+                transaction_retry_count += 1
+                
+            except Exception as e:
+                # Handle any exceptions that might occur during transaction streaming
+                transaction_retry_count += 1
+                print(f"❌ Error in transaction stream: {e}")
+                print(f"⏱️ Reconnecting transaction stream in {transaction_retry_delay} seconds...")
+            
+            # Check if we've exceeded max retries for transactions
+            if transaction_max_retries > 0 and transaction_retry_count >= transaction_max_retries:
+                print(f"❌ Transaction stream failed to connect after {transaction_max_retries} attempts. Giving up.")
+                say_nonblocking("Transaction stream connection failed after multiple attempts.", voice="Victoria")
+                break
+                
+            # Exponential backoff for transaction retry delay (up to 60 seconds)
+            time.sleep(transaction_retry_delay)
+            transaction_retry_delay = min(transaction_retry_delay * 1.5, 60)  # Increase delay, but cap at 60 seconds
+    
+    # Start transaction streaming thread
+    transaction_thread = threading.Thread(target=run_transaction_stream, daemon=True)
+    transaction_thread.start()
+    
+    while True:
+        try:
+            print(f"🔄 Starting/restarting OANDA price stream (attempt {retry_count + 1})")
+            # Stream live prices from OANDA and process them with the Algo instance
+            for price in stream_oanda_live_prices(secrets, instrument):
+                take, return_dict = purple.process_row(price['timestamp'], price['bid'], precision, say=True)
+                if take:
+                    say_nonblocking(f'We would take a trade now! {take}.')
+                # Update the live graph
+                graph_updater.update_graph(return_dict)
+                # Reset retry count on successful data
+                retry_count = 0
+                retry_delay = 5
+                
+            # If we exit the loop normally (generator ended), we should reconnect
+            print("⚠️ Price stream ended. Attempting to reconnect...")
+            retry_count += 1
+            
+        except Exception as e:
+            # Handle any exceptions that might occur during streaming
+            retry_count += 1
+            print(f"❌ Error in trading script: {e}")
+            print(f"⏱️ Reconnecting in {retry_delay} seconds...")
+        
+        # Check if we've exceeded max retries
+        if max_retries > 0 and retry_count >= max_retries:
+            print(f"❌ Failed to connect after {max_retries} attempts. Giving up.")
+            say_nonblocking("Connection failed after multiple attempts. Please check your network and restart the application.", voice="Alex")
+            break
+            
+        # Exponential backoff for retry delay (up to 60 seconds)
+        time.sleep(retry_delay)
+        retry_delay = min(retry_delay * 1.5, 60)  # Increase delay, but cap at 60 seconds
+
+
 def get_instrument_precision(credentials, instrument_name):
+
     """
     Retrieves the display precision (decimal places) for a financial instrument from OANDA.
 
@@ -1841,6 +1928,21 @@ def create_oanda_orders(credentials, instrument, side,
         print(f"❌ {error_msg}")
         return {"error": error_msg}
 
+
+def say_hello():
+    print("Hello")
+    messagebox.showinfo("Greeting", "Hello")
+    engine = pyttsx3.init()
+    engine.say("Hello")
+    engine.runAndWait()
+
+
+def toggle_take():
+    global take
+    take = not take
+    take_button.config(text=f"Take: {'ON' if take else 'OFF'}")
+    say_nonblocking(f"Take is now {'ON' if take else 'OFF'}")
+
 # Sample credentials - replace with your actual credentials
 sample_credentials = {
     'api_key': 'bdc30e0508827ff85bf58eaba6408bf5-e1fe94c6bfb8617a0bde3fa2c6c5b005',
@@ -1858,9 +1960,6 @@ instrument = input("Instrument (e.g., USD_CAD): ")
 precision = get_instrument_precision(secrets, instrument)  # Get precision from the mean price
 purple = Algo(interval1='15min', interval2='2min')  # Create an instance of the Algo class with 15-minute intervals
 
-# Start the web server in a separate thread
-import threading
-from live_graph_server import run_server, graph_updater
 
 # Start the Flask server in a background thread
 server_thread = threading.Thread(target=run_server, daemon=True)
@@ -1900,108 +1999,9 @@ for _, row in historical_df.iterrows():
     graph_updater.update_graph(return_dict)
 
 
-# Function to run the trading script in a separate thread
-def run_trading_script():
-    """Stream live prices from OANDA and process them with the Algo instance,
-    automatically reconnecting if the connection fails."""
-    max_retries = 10  # Maximum number of reconnection attempts
-    retry_count = 0
-    retry_delay = 5  # Initial delay in seconds between retries
-    
-    # Start transaction streaming in a separate thread with reconnection logic
-    def run_transaction_stream():
-        """Stream live transactions from OANDA with automatic reconnection."""
-        transaction_max_retries = 10
-        transaction_retry_count = 0
-        transaction_retry_delay = 5
-        
-        while True:
-            try:
-                print(f"🔄 Starting/restarting OANDA transaction stream (attempt {transaction_retry_count + 1})")
-                
-                # Stream transactions with reconnection
-                for transaction in stream_oanda_transactions(sample_credentials):
-                    # Transaction events are automatically handled in the stream function
-                    # Reset retry count on successful data
-                    transaction_retry_count = 0
-                    transaction_retry_delay = 5
-                    
-                # If we exit the loop normally (generator ended), we should reconnect
-                print("⚠️ Transaction stream ended. Attempting to reconnect...")
-                transaction_retry_count += 1
-                
-            except Exception as e:
-                # Handle any exceptions that might occur during transaction streaming
-                transaction_retry_count += 1
-                print(f"❌ Error in transaction stream: {e}")
-                print(f"⏱️ Reconnecting transaction stream in {transaction_retry_delay} seconds...")
-            
-            # Check if we've exceeded max retries for transactions
-            if transaction_max_retries > 0 and transaction_retry_count >= transaction_max_retries:
-                print(f"❌ Transaction stream failed to connect after {transaction_max_retries} attempts. Giving up.")
-                say_nonblocking("Transaction stream connection failed after multiple attempts.", voice="Victoria")
-                break
-                
-            # Exponential backoff for transaction retry delay (up to 60 seconds)
-            time.sleep(transaction_retry_delay)
-            transaction_retry_delay = min(transaction_retry_delay * 1.5, 60)  # Increase delay, but cap at 60 seconds
-    
-    # Start transaction streaming thread
-    transaction_thread = threading.Thread(target=run_transaction_stream, daemon=True)
-    transaction_thread.start()
-    
-    while True:
-        try:
-            print(f"🔄 Starting/restarting OANDA price stream (attempt {retry_count + 1})")
-            # Stream live prices from OANDA and process them with the Algo instance
-            for price in stream_oanda_live_prices(secrets, instrument):
-                take, return_dict = purple.process_row(price['timestamp'], price['bid'], precision, say=True)
-                if take:
-                    say_nonblocking(f'We would take a trade now! {take}.')
-                # Update the live graph
-                graph_updater.update_graph(return_dict)
-                # Reset retry count on successful data
-                retry_count = 0
-                retry_delay = 5
-                
-            # If we exit the loop normally (generator ended), we should reconnect
-            print("⚠️ Price stream ended. Attempting to reconnect...")
-            retry_count += 1
-            
-        except Exception as e:
-            # Handle any exceptions that might occur during streaming
-            retry_count += 1
-            print(f"❌ Error in trading script: {e}")
-            print(f"⏱️ Reconnecting in {retry_delay} seconds...")
-        
-        # Check if we've exceeded max retries
-        if max_retries > 0 and retry_count >= max_retries:
-            print(f"❌ Failed to connect after {max_retries} attempts. Giving up.")
-            say_nonblocking("Connection failed after multiple attempts. Please check your network and restart the application.", voice="Alex")
-            break
-            
-        # Exponential backoff for retry delay (up to 60 seconds)
-        time.sleep(retry_delay)
-        retry_delay = min(retry_delay * 1.5, 60)  # Increase delay, but cap at 60 seconds
-
 # Start the trading script in a separate thread
 trading_thread = threading.Thread(target=run_trading_script, daemon=True)
 trading_thread.start()
-
-# Function to print and say hello
-def say_hello():
-    print("Hello")
-    messagebox.showinfo("Greeting", "Hello")
-    engine = pyttsx3.init()
-    engine.say("Hello")
-    engine.runAndWait()
-
-# Function to toggle the 'take' variable
-def toggle_take():
-    global take
-    take = not take
-    take_button.config(text=f"Take: {'ON' if take else 'OFF'}")
-    say_nonblocking(f"Take is now {'ON' if take else 'OFF'}")
 
 # Run the GUI in the main thread
 root = tk.Tk()
