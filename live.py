@@ -67,6 +67,10 @@ class Algo:
         self.enough_pamplitude = False  # Flag to indicate if amplitude is greater than 0.002
 
         self.cross_direction_previous = 0  # Previous cross direction
+        
+        # Add tracking for maximum amplitudes
+        self.max_mamplitude = 0  # Track maximum mamplitude since last reset
+        self.max_pamplitude = 0  # Track maximum pamplitude since last reset
 
 
     def process_row(self, timestamp, price, precision, say):
@@ -143,16 +147,28 @@ class Algo:
         mamplitude = None
         mamplitude_temp = round(abs(ema - tema), precision)  # Calculate the amplitude between EMA and TEMA
         # percent of price
-        mamplitude = round((mamplitude_temp / price) * 100, precision) if price != 0 else 0
+        mamplitude_current = round((mamplitude_temp / price) * 100, precision) if price != 0 else 0
+        
+        # Only allow mamplitude to increase until reset, with maximum cap of 0.1
+        if mamplitude_current > self.max_mamplitude:
+            self.max_mamplitude = min(mamplitude_current, 0.1)  # Cap at 0.1 (10%)
+        mamplitude = self.max_mamplitude
+        
         self.mamplitudes.append(mamplitude)  # Append the amplitude to the list
         if mamplitude > 0.002:
-            self.enough_mamplitude = True  # Set flag if amplitude is greater than 0.02
+            self.enough_mamplitude = True  # Set flag if amplitude is greater than 0.002
 
 
         pamplitude = None
-        pamplitude_temp = round(abs(price - self.cross_price_previous), precision)  # Calculate the amplitude between XEMA and XTEMA
+        pamplitude_temp = round(abs(price - self.cross_price_previous), precision)  # Calculate the amplitude between current price and previous cross price
         # percent of price
-        pamplitude = round((pamplitude_temp / price) * 100, precision) if price != 0 else 0
+        pamplitude_current = round((pamplitude_temp / price) * 100, precision) if price != 0 else 0
+        
+        # Only allow pamplitude to increase until reset, with maximum cap of 0.1
+        if pamplitude_current > self.max_pamplitude:
+            self.max_pamplitude = min(pamplitude_current, 0.1)  # Cap at 0.1 (10%)
+        pamplitude = self.max_pamplitude
+        
         self.pamplitudes.append(pamplitude)  # Append the amplitude to the list
         if pamplitude > 0.001:
             self.enough_pamplitude = True
@@ -181,6 +197,8 @@ class Algo:
                         print(f'{timestamp} - Price: {price}, EMA: {ema}, TEMA: {tema}, E MAmplitude: {self.enough_mamplitude}, Cross Direction: {cross_direction}')
                         self.enough_mamplitude = False  # Reset flag after cross up
                         self.enough_pamplitude = False
+                        self.max_mamplitude = 0  # Reset max mamplitude
+                        self.max_pamplitude = 0  # Reset max pamplitude
                         self.cross_direction_previous = 1
 
             elif (self.tema_values[-1] < self.ema_values[-1] and self.tema_values[-2] >= self.ema_values[-2]):
@@ -198,6 +216,8 @@ class Algo:
                         print(f'{timestamp } - Price: {price}, EMA: {ema}, TEMA: {tema}, E MAmplitude: {self.enough_mamplitude}, Cross Direction: {cross_direction}')
                         self.enough_mamplitude = False
                         self.enough_pamplitude = False
+                        self.max_mamplitude = 0  # Reset max mamplitude
+                        self.max_pamplitude = 0  # Reset max pamplitude
                         self.cross_direction_previous = -1
 
         self.cross_directions.append(cross_direction)  # Append cross direction to the list
@@ -1739,7 +1759,7 @@ def create_oanda_orders(credentials, instrument, side,
                             "instrument": instrument,
                             "timeInForce": "GTC" if order_type in ["LIMIT", "STOP"] else "FOK",
                             "type": order_type,
-                            "positionFill": "OPEN_ONLY"
+                                                       "positionFill": "OPEN_ONLY"
                         }
                     }
                 

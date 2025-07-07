@@ -248,7 +248,7 @@ class LiveGraphUpdater:
                 'y': mamplitudes_filtered,
                 'mode': 'lines',
                 'name': 'MAmplitude',
-                'line': {'color': 'orange', 'width': 2},
+                'line': {'color': 'orange', 'width': 1, 'opacity': 0.1},
                 'yaxis': 'y2'
             }
 
@@ -258,7 +258,7 @@ class LiveGraphUpdater:
                 'y': pamplitudes_filtered,
                 'mode': 'lines',
                 'name': 'PAmplitude',
-                'line': {'color': 'lightblue', 'width': 2},
+                'line': {'color': 'lightblue', 'width': 1, 'opacity': 0.1},
                 'yaxis': 'y2'
             }
             # Layout
@@ -269,8 +269,8 @@ class LiveGraphUpdater:
                 'hovermode': 'x unified',
                 'xaxis': {'title': 'Time'},
                 'yaxis': {'title': 'Price', 'side': 'left'},
-                'yaxis2': {'title': 'MAmplitude %', 'side': 'right', 'overlaying': 'y', 'range': [0, 0.1]},
-                'yaxis2': {'title': 'PAmplitude %', 'side': 'right', 'overlaying': 'y', 'range': [0, 0.1]},
+                'yaxis2': {'title': 'MAmplitude %', 'side': 'right', 'overlaying': 'y', 'range': [0, 0.11]},
+                'yaxis2': {'title': 'PAmplitude %', 'side': 'right', 'overlaying': 'y', 'range': [0, 0.11]},
             }
             
             return {
