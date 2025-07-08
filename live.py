@@ -73,6 +73,8 @@ class Algo:
         self.max_mamplitude = 0  # Track maximum mamplitude since last reset
         self.max_pamplitude = 0  # Track maximum pamplitude since last reset
 
+        self.mamplitude_threshold = 0.002  # Threshold for mamplitude to be considered significant
+        self.pamplitude_threshold = 0.001  # Threshold for pamplitude to be considered significant
 
     def process_row(self, timestamp, price, precision, say):
 
@@ -156,7 +158,7 @@ class Algo:
         mamplitude = self.max_mamplitude
         
         self.mamplitudes.append(mamplitude)  # Append the amplitude to the list
-        if mamplitude > 0.002:
+        if mamplitude > self.mamplitude_threshold:
             self.enough_mamplitude = True  # Set flag if amplitude is greater than 0.002
 
 
@@ -171,7 +173,7 @@ class Algo:
         pamplitude = self.max_pamplitude
         
         self.pamplitudes.append(pamplitude)  # Append the amplitude to the list
-        if pamplitude > 0.001:
+        if pamplitude > self.pamplitude_threshold:
             self.enough_pamplitude = True
 
 
