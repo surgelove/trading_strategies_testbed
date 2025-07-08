@@ -242,6 +242,17 @@ class LiveGraphUpdater:
                 'marker': {'symbol': 'diamond', 'size': 8, 'color': 'darkgreen', 'opacity': 1}
             }
 
+            # Current price horizontal line
+            current_price = prices_filtered[-1] if prices_filtered else 0
+            current_price_line = {
+                'x': [timestamps_str[0], timestamps_str[-1]] if timestamps_str else [],
+                'y': [current_price, current_price],
+                'mode': 'lines',
+                'name': 'Current Price Line',
+                'line': {'color': 'gray', 'width': 1, 'dash': 'dash'},
+                'hovertemplate': f'Current Price: {current_price:.5f}<extra></extra>'
+            }
+
             # MAmplitude trace
             mamplitude_trace = {
                 'x': timestamps_str,
@@ -275,7 +286,8 @@ class LiveGraphUpdater:
             
             return {
                 'data': [price_trace, ema_trace, tema_trace, cross_up_trace, cross_down_trace, 
-                        min_price_trace, max_price_trace, xmin_price_trace, xmax_price_trace, pamplitude_trace, mamplitude_trace],
+                        min_price_trace, max_price_trace, xmin_price_trace, xmax_price_trace, 
+                        current_price_line, pamplitude_trace, mamplitude_trace],
                 'layout': layout
             }
             

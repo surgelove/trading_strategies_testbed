@@ -247,6 +247,7 @@
                 <label><input type="checkbox" data-series="Max Price" checked> Max Price</label>
                 <label><input type="checkbox" data-series="XMin Price" checked> XMin Price</label>
                 <label><input type="checkbox" data-series="XMax Price" checked> XMax Price</label>
+                <label><input type="checkbox" data-series="Current Price Line" checked> Current Price Line</label>
                 <label><input type="checkbox" data-series="MAmplitude" checked> MAmplitude</label>
                 <label><input type="checkbox" data-series="PAmplitude" checked> PAmplitude</label>
             </div>
@@ -317,6 +318,14 @@
                 .then(plotData => {
                     if (plotData && plotData.data && plotData.layout) {
                         const graphDiv = document.getElementById('graph');
+                        
+                        // Apply visibility settings to the incoming data
+                        plotData.data.forEach(trace => {
+                            if (trace.name in seriesVisibility) {
+                                trace.visible = seriesVisibility[trace.name];
+                            }
+                        });
+                        
                         Plotly.newPlot(graphDiv, plotData.data, plotData.layout, {
                             responsive: true,
                             displayModeBar: true,
@@ -460,6 +469,7 @@
             'Max Price': true,
             'XMin Price': true,
             'XMax Price': true,
+            'Current Price Line': true,
             'MAmplitude': true,
             'PAmplitude': true
         };
