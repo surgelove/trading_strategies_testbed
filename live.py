@@ -671,6 +671,43 @@ class TimeBasedStreamingMA:
             self.last_timestamp = None
 
 
+def get_pip_value(credentials,instrument_name):
+
+    url = credentials.get('url')
+    api_key = credentials.get('api_key')
+    account_id = credentials.get('account_id')
+
+    endpoint = f"{url}/v3/accounts/{account_id}/instruments"
+    headers = {'Authorization': f'Bearer {api_key}'}
+    params = None
+    data = None
+
+    try:
+        response = requests.get(endpoint, headers=headers, params=params, data=data)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        
+        instruments = response.json()['instruments']
+        
+        for instrument in instruments:
+            if instrument['name'] == instrument_name:
+                # Calculate pip value based on pip location
+                pip_location = instrument.get('pipLocation', -4)  # Default to -4 if not found
+                pip_value = 10 ** pip_location
+                
+                print(f"Instrument: {instrument_name}")
+                print(f"Pip Location: {pip_location}")
+                print(f"Pip Value: {pip_value}")
+                
+                return pip_value
+                
+        print(f"Instrument {instrument_name} not found")
+        return None # Instrument not found
+        
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return None
+
+
 def stream_oanda_live_prices(credentials, instrument='USD_CAD', callback=None, max_duration=None):
     """
     Stream live prices from OANDA API for a single instrument
@@ -1050,7 +1087,7 @@ def stream_oanda_transactions(credentials, callback=None, max_duration=None):
             response.close()
 
 
-def run_trading_script():
+def run_trading_script(credentials):
     """Stream live prices from OANDA and process them with the Algo instance,
     automatically reconnecting if the connection fails."""
     max_retries = 10  # Maximum number of reconnection attempts
@@ -1069,7 +1106,7 @@ def run_trading_script():
                 print(f"🔄 Starting/restarting OANDA transaction stream (attempt {transaction_retry_count + 1})")
                 
                 # Stream transactions with reconnection
-                for transaction in stream_oanda_transactions(sample_credentials):
+                for transaction in stream_oanda_transactions(credentials):
                     # Transaction events are automatically handled in the stream function
                     # Reset retry count on successful data
                     transaction_retry_count = 0
@@ -1103,7 +1140,7 @@ def run_trading_script():
         try:
             print(f"🔄 Starting/restarting OANDA price stream (attempt {retry_count + 1})")
             # Stream live prices from OANDA and process them with the Algo instance
-            for price in stream_oanda_live_prices(secrets, instrument):
+            for price in stream_oanda_live_prices(credentials, instrument):
                 take, return_dict = purple.process_row(price['timestamp'], price['bid'], precision, say=True)
                 if take:
                     say_nonblocking(f'We would take a trade now! {take}.')
@@ -1945,21 +1982,17 @@ def toggle_take():
     take_button.config(text=f"Take: {'ON' if take else 'OFF'}")
     say_nonblocking(f"Take is now {'ON' if take else 'OFF'}")
 
-# Sample credentials - replace with your actual credentials
-sample_credentials = {
-    'api_key': 'bdc30e0508827ff85bf58eaba6408bf5-e1fe94c6bfb8617a0bde3fa2c6c5b005',
-    'account_id': '001-002-6172489-007'
-}
+
 
 take = False
 
 # Load secrets from secrets.json
 with open('secrets.json', 'r') as f:
-    secrets = json.load(f)
+    credentials = json.load(f)
 
 instrument = input("Instrument (e.g., USD_CAD): ")
 
-precision = get_instrument_precision(secrets, instrument)  # Get precision from the mean price
+precision = get_instrument_precision(credentials, instrument)  # Get precision from the mean price
 purple = Algo(interval1='15min', interval2='2min')  # Create an instance of the Algo class with 15-minute intervals
 
 
@@ -1976,7 +2009,7 @@ time.sleep(3)
 
 # Before streaming, get the historical data for that instrument from oanda
 historical_data = get_oanda_data(
-    credentials=secrets,
+    credentials=credentials,
     instrument=instrument,
     granularity='S5',  # 5-second granularity
     hours=8  # Fetch 1 hour of historical data
@@ -2002,7 +2035,7 @@ for _, row in historical_df.iterrows():
 
 
 # Start the trading script in a separate thread
-trading_thread = threading.Thread(target=run_trading_script, daemon=True)
+trading_thread = threading.Thread(target=run_trading_script(credentials), daemon=True)
 trading_thread.start()
 
 # Run the GUI in the main thread
