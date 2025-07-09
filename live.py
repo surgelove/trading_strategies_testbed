@@ -1776,6 +1776,7 @@ def create_oanda_orders(credentials, instrument, side,
             buy_units_per_entry = total_buy_units // entries
             sell_units_per_entry = total_sell_units // entries
             print(f"Available units - BUY: {total_buy_units} ({percent_display}% of {int(available_long)}), SELL: {total_sell_units} ({percent_display}% of {int(available_short)})")
+           
             print(f"Units per entry - BUY: {buy_units_per_entry}, SELL: {sell_units_per_entry} (divided into {entries} entries)")
             if buy_units_per_entry <= 0 and sell_units_per_entry <= 0:
                 print("⚠️  No available units for trading. Check your margin or existing positions.")
@@ -2035,7 +2036,7 @@ for _, row in historical_df.iterrows():
 
 
 # Start the trading script in a separate thread
-trading_thread = threading.Thread(target=run_trading_script(credentials), daemon=True)
+trading_thread = threading.Thread(target=run_trading_script, args=(credentials,), daemon=True)
 trading_thread.start()
 
 # Run the GUI in the main thread
