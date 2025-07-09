@@ -1093,6 +1093,7 @@ def run_trading_script(credentials):
     max_retries = 10  # Maximum number of reconnection attempts
     retry_count = 0
     retry_delay = 5  # Initial delay in seconds between retries
+    transaction_types = []
     
     # Start transaction streaming in a separate thread with reconnection logic
     def run_transaction_stream():
@@ -1111,6 +1112,11 @@ def run_trading_script(credentials):
                     # Reset retry count on successful data
                     transaction_retry_count = 0
                     transaction_retry_delay = 5
+
+                    if transaction['type'] != 'HEARTBEAT':
+                        print('trx======')
+                        print(transaction['type'])
+                        transaction_types.append(transaction['type'])
                     
                 # If we exit the loop normally (generator ended), we should reconnect
                 print("⚠️ Transaction stream ended. Attempting to reconnect...")
@@ -1144,6 +1150,13 @@ def run_trading_script(credentials):
                 take, return_dict = purple.process_row(price['timestamp'], price['bid'], precision, say=True)
                 if take:
                     say_nonblocking(f'We would take a trade now! {take}.')
+
+                # Get the latest transactions
+                if transaction_types:
+                    print('trx list=====')
+                    print(transaction_types)
+                    transaction_types.clear()
+
                 # Update the live graph
                 graph_updater.update_graph(return_dict)
                 # Reset retry count on successful data
