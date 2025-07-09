@@ -1,0 +1,31 @@
+# Order-related transactions
+'LIMIT_ORDER'           # Limit order created
+'STOP_ORDER'            # Stop order created
+'MARKET_IF_TOUCHED_ORDER' # Market-if-touched order created
+'ORDER_MODIFY'          # Order modification
+'ORDER_REPLACE'         # Order replacement
+
+# Position-related transactions
+'TRADE_CLOSE'           # Trade closed
+'POSITION_CLOSE'        # Position closed
+
+# Stop loss and take profit management
+'STOP_LOSS_ORDER'       # Stop loss order created
+'TAKE_PROFIT_ORDER'     # Take profit order created
+'TRAILING_STOP_LOSS_ORDER' # Trailing stop loss order created
+
+# Account-related transactions
+'ACCOUNT_SUMMARY'       # Account summary update
+'MARGIN_CALL_ENTER'     # Margin call entered
+'MARGIN_CALL_EXIT'      # Margin call exited
+'DAILY_FINANCING'       # Daily financing charges
+
+# Administrative transactions
+'TRANSFER_FUNDS'        # Fund transfer
+'RESET_RESETTABLE_PL'   # Reset resettable P&L
+'CLIENT_CONFIGURE'      # Client configuration change
+'CLIENT_CONFIGURE_REJECT' # Client configuration rejected
+
+# Error transactions
+'TRANSACTION_REJECT'    # Transaction rejected
+'CREATE_TRANSACTION'    # Generic transaction creation
