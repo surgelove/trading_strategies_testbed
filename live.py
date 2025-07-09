@@ -2015,8 +2015,7 @@ historical_data = get_oanda_data(
     granularity='S5',  # 5-second granularity
     hours=8  # Fetch 1 hour of historical data
 )
-print(historical_data)
-# put historical data into a CSV
+
 historical_df = pd.DataFrame(historical_data)
 historical_df['timestamp'] = pd.to_datetime(historical_df['timestamp'])
 historical_df = historical_df.drop_duplicates(subset=['timestamp'], keep='last')
