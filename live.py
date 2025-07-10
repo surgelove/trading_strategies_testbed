@@ -40,6 +40,7 @@ class Algo:
         self.tema_values = []
         self.xema_values = []
         self.xtema_values = []
+        self.pema_values = []
         self.ptema_values = []
         self.mamplitudes = []
         self.pamplitudes = []  # List to hold PAmplitude values
@@ -78,6 +79,8 @@ class Algo:
         self.mamplitude_threshold = 0.002  # Threshold for mamplitude to be considered significant
         self.pamplitude_threshold = 0.001  # Threshold for pamplitude to be considered significant
 
+        self.pcross_price_previous = None  # Previous price for peak cross detection
+
     def process_row(self, timestamp, price, precision, say):
 
         threshold = 0.00005  # Threshold for ignoring min/max prices close to current price
@@ -95,7 +98,9 @@ class Algo:
         self.xema_values.append(xema)
         self.xtema_values.append(xtema)
 
+        pema = round(self.xema_calc.add_data_point(timestamp, price), precision)
         ptema = round(self.ptema_calc.add_data_point(timestamp, price), precision)
+        self.pema_values.append(pema)
         self.ptema_values.append(ptema)
 
 
@@ -112,6 +117,22 @@ class Algo:
             elif (price < self.ptema_values[-1] and price >= self.ptema_values[-2]):
                 pcross_direction = -1
                 pcross_price_down = price  # Store the price at which the cross occurred
+        
+        # when ptema crosses pema, start detectng travel from one direction to the other in percentage
+        ptravel = None
+        if len(self.pema_values) > 1 and len(self.ptema_values) > 1:
+            if (self.ptema_values[-1] > self.pema_values[-1] and self.ptema_values[-2] <= self.pema_values[-2]):
+                if self.cross_price_previous:
+                    ptravel = (self.cross_price_previous - price) / self.cross_price_previous * 100
+                else:
+                    ptravel = 0
+                self.pcross_price_previous = price
+            elif (self.ptema_values[-1] < self.pema_values[-1] and self.ptema_values[-2] >= self.pema_values[-2]):
+                if self.cross_price_previous:
+                    ptravel = (price - self.cross_price_previous) / self.cross_price_previous * 100
+                else:
+                    ptravel = 0
+                self.pcross_price_previous = price
 
         # when xtema crosses xema, detect the direction
         xcross_direction = None
@@ -292,6 +313,7 @@ class Algo:
             'Peak_Cross_Direction': pcross_direction,
             'Peak_Cross_Price_Up': pcross_price_up,
             'Peak_Cross_Price_Down': pcross_price_down,
+            'Peak_Travel': ptravel,
             'Min_Price': self.min_prices[-1],
             'Max_Price': self.max_prices[-1],
             'XMin_Price': self.xmin_prices[-1],
