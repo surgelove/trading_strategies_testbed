@@ -331,8 +331,7 @@ class LiveGraphUpdater:
                 'hovermode': 'x unified',
                 'xaxis': {'title': 'Time'},
                 'yaxis': {'title': 'Price', 'side': 'left'},
-                'yaxis2': {'title': 'MAmplitude %', 'side': 'right', 'overlaying': 'y', 'range': [0, 0.11]},
-                'yaxis2': {'title': 'PAmplitude %', 'side': 'right', 'overlaying': 'y', 'range': [0, 0.11]},
+                'yaxis2': {'title': 'MAmplitude %', 'side': 'right', 'overlaying': 'y'},
             }
             
             return {

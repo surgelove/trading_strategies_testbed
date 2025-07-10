@@ -206,7 +206,7 @@
         <div class="stats">
             <div class="stat-item">
                 <div class="stat-value" id="current-price">--</div>
-                <div class="stat-label">Current Price</div>
+                <div class="stat-label">Price</div>
             </div>
             <div class="stat-item">
                 <div class="stat-value" id="current-ema">--</div>
@@ -223,6 +223,10 @@
             <div class="stat-item">
                 <div class="stat-value" id="current-pamplitude">--</div>
                 <div class="stat-label">PAmplitude %</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="current-peak-travel">--</div>
+                <div class="stat-label">Peak Travel %</div>
             </div>
             <div class="stat-item">
                 <div class="stat-value" id="last-update">--</div>
@@ -244,6 +248,7 @@
                 <label><input type="checkbox" data-series="Cross Down" checked> Cross Down</label>
                 <label><input type="checkbox" data-series="Peak Cross Up" checked> Peak Cross Up</label>
                 <label><input type="checkbox" data-series="Peak Cross Down" checked> Peak Cross Down</label>
+                <label><input type="checkbox" data-series="Peak Travel" checked> Peak Travel</label>
                 <label><input type="checkbox" data-series="Min Price" checked> Min Price</label>
                 <label><input type="checkbox" data-series="Max Price" checked> Max Price</label>
                 <label><input type="checkbox" data-series="XMin Price" checked> XMin Price</label>
@@ -280,6 +285,7 @@
             document.getElementById('current-tema').textContent = data.tema ? data.tema.toFixed(5) : '--';
             document.getElementById('current-mamplitude').textContent = data.mamplitude ? data.mamplitude.toFixed(3) : '--';
             document.getElementById('current-pamplitude').textContent = data.pamplitude ? data.pamplitude.toFixed(3) : '--';
+            document.getElementById('current-peak-travel').textContent = data.peak_travel ? data.peak_travel.toFixed(3) : '--';  // Add this
             document.getElementById('last-update').textContent = data.timestamp || '--';
             document.getElementById('data-points').textContent = data.data_points || '--';
             
@@ -507,6 +513,7 @@
             'Cross Down': true,
             'Peak Cross Up': true,  // Add this
             'Peak Cross Down': true,  // Add this
+            'Peak Travel': true,  // Add this
             'Min Price': true,
             'Max Price': true,
             'XMin Price': true,
