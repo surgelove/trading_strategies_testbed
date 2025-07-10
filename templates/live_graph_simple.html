@@ -234,7 +234,6 @@
             </div>
         </div>
 
-        <!-- Add this new section -->
         <div class="filter-controls">
             <h3>📈 Data Series Visibility</h3>
             <div class="filter-options">
@@ -243,6 +242,8 @@
                 <label><input type="checkbox" data-series="TEMA" checked> TEMA</label>
                 <label><input type="checkbox" data-series="Cross Up" checked> Cross Up</label>
                 <label><input type="checkbox" data-series="Cross Down" checked> Cross Down</label>
+                <label><input type="checkbox" data-series="Peak Cross Up" checked> Peak Cross Up</label>
+                <label><input type="checkbox" data-series="Peak Cross Down" checked> Peak Cross Down</label>
                 <label><input type="checkbox" data-series="Min Price" checked> Min Price</label>
                 <label><input type="checkbox" data-series="Max Price" checked> Max Price</label>
                 <label><input type="checkbox" data-series="XMin Price" checked> XMin Price</label>
@@ -253,6 +254,7 @@
             </div>
             <button class="btn" onclick="applyVisibilityFilters()">Apply Filters</button>
             <button class="btn" onclick="resetVisibilityFilters()">Show All</button>
+            <button class="btn danger" onclick="hideAllFilters()">Show None</button>
         </div>
     
         <div id="graph"></div>
@@ -429,6 +431,44 @@
             updateGraph();
             updateData();
         }
+
+        // Reset all filters to visible
+        function resetVisibilityFilters() {
+            document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            
+            Object.keys(seriesVisibility).forEach(key => {
+                seriesVisibility[key] = true;
+            });
+            
+            // Apply to graph
+            const graphDiv = document.getElementById('graph');
+            if (!graphDiv || !graphDiv.data) return;
+            
+            graphDiv.data.forEach(trace => {
+                Plotly.restyle(graphDiv, {visible: true}, [graphDiv.data.indexOf(trace)]);
+            });
+        }
+        
+        // Hide all filters - Add this new function
+        function hideAllFilters() {
+            document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            Object.keys(seriesVisibility).forEach(key => {
+                seriesVisibility[key] = false;
+            });
+            
+            // Apply to graph
+            const graphDiv = document.getElementById('graph');
+            if (!graphDiv || !graphDiv.data) return;
+            
+            graphDiv.data.forEach(trace => {
+                Plotly.restyle(graphDiv, {visible: false}, [graphDiv.data.indexOf(trace)]);
+            });
+        }
         
         // Add keyboard controls
         document.addEventListener('keydown', function(event) {
@@ -465,6 +505,8 @@
             'TEMA': true,
             'Cross Up': true,
             'Cross Down': true,
+            'Peak Cross Up': true,  // Add this
+            'Peak Cross Down': true,  // Add this
             'Min Price': true,
             'Max Price': true,
             'XMin Price': true,

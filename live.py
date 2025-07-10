@@ -99,16 +99,17 @@ class Algo:
         self.ptema_values.append(ptema)
 
 
-
         # when price crosses ptema, detect the direction
         pcross_price_up = None
         pcross_price_down = None
         pcross_direction = None
         if len(self.ptema_values) > 1:
-            if (self.ptema_values[-1] > price and self.ptema_values[-2] <= price):
+            # print('len ptema values:', len(self.ptema_values))
+            # Fix: Compare price positions relative to PTEMA, not PTEMA relative to price
+            if (price > self.ptema_values[-1] and price <= self.ptema_values[-2]):
                 pcross_direction = 1
                 pcross_price_up = price  # Store the price at which the cross occurred
-            elif (self.ptema_values[-1] < price and self.ptema_values[-2] >= price):
+            elif (price < self.ptema_values[-1] and price >= self.ptema_values[-2]):
                 pcross_direction = -1
                 pcross_price_down = price  # Store the price at which the cross occurred
 
@@ -127,15 +128,13 @@ class Algo:
             self.xmin_price = price
         if xcross_direction == 1:  # If last cross was down
             # if max price is too close in % from price itself, ignore it
-            print('-------------')
-            print(F'yo {timestamp}')
             if self.xmin_price is not None:
                 # print number as format 0.0000000 no matter how small
                 print(f"{self.xmin_price:.8f} {price:.8f}")
                 print(f"{round(abs(self.xmin_price - price) / price, 8):.8f}")
             if self.xmin_price is not None and abs(self.xmin_price - price) / price < threshold:
                 self.xmin_price = None
-                print('not included')
+
             else:
                 self.xmin_prices.append(self.xmin_price)  # Append the minimum price since last cross down
                 self.xmin_price = None  # Reset min price after cross down
@@ -149,14 +148,11 @@ class Algo:
             self.xmax_price = price
         if xcross_direction == -1:  # If last cross was up
             # if max price is too close in % from price itself, ignore it
-            print('-------------')
-            print(F'yo {timestamp}')
             if self.xmax_price is not None:
                 print(f"{self.xmax_price:.8f} {price:.8f}")
                 print(f"{round(abs(self.xmax_price - price) / price, 8):.8f}")
             if self.xmax_price is not None and abs(self.xmax_price - price) / price < threshold:
                 self.xmax_price = None
-                print('not included')
             else:
                 self.xmax_prices.append(self.xmax_price)  # Append the maximum price since last cross up
                 self.xmax_price = None  # Reset max price after cross up
@@ -2029,7 +2025,7 @@ with open('secrets.json', 'r') as f:
 instrument = input("Instrument (e.g., USD_CAD): ")
 
 precision = get_instrument_precision(credentials, instrument)  # Get precision from the mean price
-purple = Algo(base_interval='15min', asperity_interval='2min', peak_interval='1min')  # Create an instance of the Algo class with 15-minute intervals
+purple = Algo(base_interval='15min', asperity_interval='2min', peak_interval='3min')  # Create an instance of the Algo class with 15-minute intervals
 
 
 # Start the Flask server in a background thread
