@@ -49,13 +49,13 @@ class Algo:
         self.peak_ema_values = []
         self.peak_tema_values = []
         self.peak_dema_values = []
-        self.mamplitudes = []
-        self.pamplitudes = []  # List to hold PAmplitude values
+        self.base_mamplitudes = []
+        self.base_pamplitudes = []  # List to hold base_pamplitude values
 
-        self.cross_directions = []  # List to hold cross direction
-        self.cross_prices = []  # List to hold cross price
-        self.cross_prices_up = []  # List to hold cross up prices
-        self.cross_prices_down = []  # List to hold cross down prices
+        self.base_cross_directions = []  # List to hold cross direction
+        self.base_cross_prices = []  # List to hold cross price
+        self.base_cross_prices_up = []  # List to hold cross up prices
+        self.base_cross_prices_down = []  # List to hold cross down prices
 
         self.min_prices = []  # List to hold minimum prices since cross down
         self.max_prices = []  # List to hold maximum prices since cross up
@@ -64,27 +64,27 @@ class Algo:
         self.min_price_latest = None  # keeps track of the latest minimum price
         self.max_price_latest = None  # keeps track of the latest maximum price
 
-        self.xmin_prices = []  # List to hold minimum prices since cross down for aspr_ema
-        self.xmax_prices = []
-        self.xmin_price = None
-        self.xmax_price = None
+        self.aspr_min_prices = []  # List to hold minimum prices since cross down for aspr_ema
+        self.aspr_max_prices = []
+        self.aspr_min_price = None
+        self.aspr_max_price = None
 
         self.travels = []  # List to hold travel values
         self.travel = None  # keeps track of the travel from min to max after cross up
 
-        self.enough_mamplitude = False  # Flag to indicate if amplitude is greater than 0.02
+        self.enough_base_mamplitude = False  # Flag to indicate if amplitude is greater than 0.02
 
         self.cross_price_previous = None  # Previous cross price
-        self.enough_pamplitude = False  # Flag to indicate if amplitude is greater than 0.002
+        self.enough_base_pamplitude = False  # Flag to indicate if amplitude is greater than 0.002
 
         self.cross_direction_previous = 0  # Previous cross direction
         
         # Add tracking for maximum amplitudes
-        self.max_mamplitude = 0  # Track maximum mamplitude since last reset
-        self.max_pamplitude = 0  # Track maximum pamplitude since last reset
+        self.base_mamplitude_max = 0  # Track maximum base_mamplitude since last reset
+        self.base_pamplitude_max = 0  # Track maximum base_pamplitude since last reset
 
-        self.mamplitude_threshold = 0.002  # Threshold for mamplitude to be considered significant
-        self.pamplitude_threshold = 0.001  # Threshold for pamplitude to be considered significant
+        self.base_mamplitude_threshold = 0.002  # Threshold for base_mamplitude to be considered significant
+        self.base_pamplitude_threshold = 0.001  # Threshold for base_pamplitude to be considered significant
         self.peak_travel_threshold = 0.04  # Threshold for peak travel to be considered significant
         self.peaks_counter_threshold = 3
         self.peaks_counter_up = 0
@@ -205,74 +205,74 @@ class Algo:
                 xcross_direction = -1
         
         # every row, calculate the min price of all prices since last cross down
-        if self.xmin_price is None:
-            self.xmin_price = price
-        if price < self.xmin_price:
-            self.xmin_price = price
+        if self.aspr_min_price is None:
+            self.aspr_min_price = price
+        if price < self.aspr_min_price:
+            self.aspr_min_price = price
         if xcross_direction == 1:  # If last cross was down
             # if max price is too close in % from price itself, ignore it
-            if self.xmin_price is not None:
+            if self.aspr_min_price is not None:
                 # print number as format 0.0000000 no matter how small
-                print(f"{self.xmin_price:.8f} {price:.8f}")
-                print(f"{round(abs(self.xmin_price - price) / price, 8):.8f}")
-            if self.xmin_price is not None and abs(self.xmin_price - price) / price < threshold:
-                self.xmin_price = None
+                print(f"{self.aspr_min_price:.8f} {price:.8f}")
+                print(f"{round(abs(self.aspr_min_price - price) / price, 8):.8f}")
+            if self.aspr_min_price is not None and abs(self.aspr_min_price - price) / price < threshold:
+                self.aspr_min_price = None
 
             else:
-                self.xmin_prices.append(self.xmin_price)  # Append the minimum price since last cross down
-                self.xmin_price = None  # Reset min price after cross down
+                self.aspr_min_prices.append(self.aspr_min_price)  # Append the minimum price since last cross down
+                self.aspr_min_price = None  # Reset min price after cross down
         else:
-            self.xmin_prices.append(None)
+            self.aspr_min_prices.append(None)
 
         # every row, calculate the max price of all prices since last cross up
-        if self.xmax_price is None:
-            self.xmax_price = price
-        if price > self.xmax_price:
-            self.xmax_price = price
+        if self.aspr_max_price is None:
+            self.aspr_max_price = price
+        if price > self.aspr_max_price:
+            self.aspr_max_price = price
         if xcross_direction == -1:  # If last cross was up
             # if max price is too close in % from price itself, ignore it
-            if self.xmax_price is not None:
-                print(f"{self.xmax_price:.8f} {price:.8f}")
-                print(f"{round(abs(self.xmax_price - price) / price, 8):.8f}")
-            if self.xmax_price is not None and abs(self.xmax_price - price) / price < threshold:
-                self.xmax_price = None
+            if self.aspr_max_price is not None:
+                print(f"{self.aspr_max_price:.8f} {price:.8f}")
+                print(f"{round(abs(self.aspr_max_price - price) / price, 8):.8f}")
+            if self.aspr_max_price is not None and abs(self.aspr_max_price - price) / price < threshold:
+                self.aspr_max_price = None
             else:
-                self.xmax_prices.append(self.xmax_price)  # Append the maximum price since last cross up
-                self.xmax_price = None  # Reset max price after cross up
+                self.aspr_max_prices.append(self.aspr_max_price)  # Append the maximum price since last cross up
+                self.aspr_max_price = None  # Reset max price after cross up
         else:
-            self.xmax_prices.append(None)
+            self.aspr_max_prices.append(None)
 
         # ---------------------------------------------
         
         # Calculate the amplitude between EMA and TEMA
-        mamplitude = None
-        mamplitude_temp = round(abs(base_ema - base_tema), precision)  # Calculate the amplitude between EMA and TEMA
+        base_mamplitude = None
+        base_mamplitude_temp = round(abs(base_ema - base_tema), precision)  # Calculate the amplitude between EMA and TEMA
         # percent of price
-        mamplitude_current = round((mamplitude_temp / price) * 100, precision) if price != 0 else 0
+        base_mamplitude_current = round((base_mamplitude_temp / price) * 100, precision) if price != 0 else 0
         
-        # Only allow mamplitude to increase until reset, with maximum cap of 0.1
-        if mamplitude_current > self.max_mamplitude:
-            self.max_mamplitude = min(mamplitude_current, 0.1)  # Cap at 0.1 (10%)
-        mamplitude = self.max_mamplitude
+        # Only allow base_mamplitude to increase until reset, with maximum cap of 0.1
+        if base_mamplitude_current > self.base_mamplitude_max:
+            self.base_mamplitude_max = min(base_mamplitude_current, 0.1)  # Cap at 0.1 (10%)
+        base_mamplitude = self.base_mamplitude_max
         
-        self.mamplitudes.append(mamplitude)  # Append the amplitude to the list
-        if mamplitude > self.mamplitude_threshold:
-            self.enough_mamplitude = True  # Set flag if amplitude is greater than 0.002
+        self.base_mamplitudes.append(base_mamplitude)  # Append the amplitude to the list
+        if base_mamplitude > self.base_mamplitude_threshold:
+            self.enough_base_mamplitude = True  # Set flag if amplitude is greater than 0.002
 
 
-        pamplitude = None
-        pamplitude_temp = round(abs(price - self.cross_price_previous), precision)  # Calculate the amplitude between current price and previous cross price
+        base_pamplitude = None
+        base_pamplitude_temp = round(abs(price - self.cross_price_previous), precision)  # Calculate the amplitude between current price and previous cross price
         # percent of price
-        pamplitude_current = round((pamplitude_temp / price) * 100, precision) if price != 0 else 0
+        base_pamplitude_current = round((base_pamplitude_temp / price) * 100, precision) if price != 0 else 0
         
-        # Only allow pamplitude to increase until reset, with maximum cap of 0.1
-        if pamplitude_current > self.max_pamplitude:
-            self.max_pamplitude = min(pamplitude_current, 0.1)  # Cap at 0.1 (10%)
-        pamplitude = self.max_pamplitude
+        # Only allow base_pamplitude to increase until reset, with maximum cap of 0.1
+        if base_pamplitude_current > self.base_pamplitude_max:
+            self.base_pamplitude_max = min(base_pamplitude_current, 0.1)  # Cap at 0.1 (10%)
+        base_pamplitude = self.base_pamplitude_max
         
-        self.pamplitudes.append(pamplitude)  # Append the amplitude to the list
-        if pamplitude > self.pamplitude_threshold:
-            self.enough_pamplitude = True
+        self.base_pamplitudes.append(base_pamplitude)  # Append the amplitude to the list
+        if base_pamplitude > self.base_pamplitude_threshold:
+            self.enough_base_pamplitude = True
 
         #  When tema crosses ema, detect the direction
         take = False
@@ -285,7 +285,7 @@ class Algo:
                 self.cross_price_previous = price
                 if self.cross_direction_previous in [0,-1]:  # If last cross was down
                     if price > base_ema or price > base_tema:  # Check if price is above EMA or TEMA
-                        if self.enough_mamplitude or self.enough_pamplitude:
+                        if self.enough_base_mamplitude or self.enough_base_pamplitude:
                             cross_price = price
                             cross_price_up = price  # Store the price at which the cross occurred
                             if say: say_nonblocking("Cross up detected", voice="Alex")
@@ -294,18 +294,18 @@ class Algo:
                         else:
                             if say: say_nonblocking("Cross up detected but not enough amplitude", voice="Alex")
                         cross_direction = 1
-                        print(f'{timestamp} - Price: {price}, EMA: {base_ema}, TEMA: {base_tema}, E MAmplitude: {self.enough_mamplitude}, Cross Direction: {cross_direction}')
-                        self.enough_mamplitude = False  # Reset flag after cross up
-                        self.enough_pamplitude = False
-                        self.max_mamplitude = 0  # Reset max mamplitude
-                        self.max_pamplitude = 0  # Reset max pamplitude
+                        print(f'{timestamp} - Price: {price}, EMA: {base_ema}, TEMA: {base_tema}, E base_mamplitude: {self.enough_base_mamplitude}, Cross Direction: {cross_direction}')
+                        self.enough_base_mamplitude = False  # Reset flag after cross up
+                        self.enough_base_pamplitude = False
+                        self.base_mamplitude_max = 0  # Reset max base_mamplitude
+                        self.base_pamplitude_max = 0  # Reset max base_pamplitude
                         self.cross_direction_previous = 1
 
             elif (self.base_tema_values[-1] < self.base_ema_values[-1] and self.base_tema_values[-2] >= self.base_ema_values[-2]):
                 self.cross_price_previous = price
                 if self.cross_direction_previous in [0,1]:  # If last cross was up
                     if price < base_ema or price < base_tema:  # Check if price is below EMA
-                        if self.enough_mamplitude or self.enough_pamplitude:
+                        if self.enough_base_mamplitude or self.enough_base_pamplitude:
                             cross_price = price
                             cross_price_down = price  # Store the price at which the cross occurred
                             if say: say_nonblocking("Cross down detected", voice="Samantha")
@@ -313,18 +313,18 @@ class Algo:
                         else:
                             if say: say_nonblocking("Cross down detected but not enough amplitude", voice="Samantha")
                         cross_direction = -1
-                        print(f'{timestamp } - Price: {price}, EMA: {base_ema}, TEMA: {base_tema}, E MAmplitude: {self.enough_mamplitude}, Cross Direction: {cross_direction}')
-                        self.enough_mamplitude = False
-                        self.enough_pamplitude = False
-                        self.max_mamplitude = 0  # Reset max mamplitude
-                        self.max_pamplitude = 0  # Reset max pamplitude
+                        print(f'{timestamp } - Price: {price}, EMA: {base_ema}, TEMA: {base_tema}, E base_mamplitude: {self.enough_base_mamplitude}, Cross Direction: {cross_direction}')
+                        self.enough_base_mamplitude = False
+                        self.enough_base_pamplitude = False
+                        self.base_mamplitude_max = 0  # Reset max base_mamplitude
+                        self.base_pamplitude_max = 0  # Reset max base_pamplitude
                         self.cross_direction_previous = -1
 
 
-        self.cross_directions.append(cross_direction)  # Append cross direction to the list
-        self.cross_prices.append(cross_price)  # Append cross price to the list
-        self.cross_prices_up.append(cross_price_up)  # Append cross price up to the list
-        self.cross_prices_down.append(cross_price_down)  # Append cross price down to the list
+        self.base_cross_directions.append(cross_direction)  # Append cross direction to the list
+        self.base_cross_prices.append(cross_price)  # Append cross price to the list
+        self.base_cross_prices_up.append(cross_price_up)  # Append cross price up to the list
+        self.base_cross_prices_down.append(cross_price_down)  # Append cross price down to the list
 
         # when it crosses up, calculate the travel from min to max
         travel = None
@@ -366,8 +366,8 @@ class Algo:
             'price': price,
             'EMA': base_ema,
             'TEMA': base_tema,
-            'MAmplitude': mamplitude,
-            'PAmplitude': pamplitude,
+            'base_mamplitude': base_mamplitude,
+            'base_pamplitude': base_pamplitude,
             'Cross_Direction': cross_direction,
             'Cross_Price': cross_price,
             'Cross_Price_Up': cross_price_up,
@@ -378,8 +378,8 @@ class Algo:
             'Peak_Travel': self.ptravel,
             'Min_Price': self.min_prices[-1],
             'Max_Price': self.max_prices[-1],
-            'XMin_Price': self.xmin_prices[-1],
-            'XMax_Price': self.xmax_prices[-1],
+            'aspr_min_price': self.aspr_min_prices[-1],
+            'aspr_max_price': self.aspr_max_prices[-1],
             'Travel': travel,
             # 'Take': take
         }

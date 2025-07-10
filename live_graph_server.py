@@ -23,12 +23,12 @@ live_data = {
     'peak_cross_ups': deque(maxlen=maxlen),  # Add this
     'peak_cross_downs': deque(maxlen=maxlen),  # Add this
     'peak_travels': deque(maxlen=maxlen),  # Add this
-    'mamplitudes': deque(maxlen=maxlen),
-    'pamplitudes': deque(maxlen=maxlen),
+    'base_mamplitudes': deque(maxlen=maxlen),
+    'base_pamplitudes': deque(maxlen=maxlen),
     'min_prices': deque(maxlen=maxlen),
     'max_prices': deque(maxlen=maxlen),
-    'xmin_prices': deque(maxlen=maxlen),
-    'xmax_prices': deque(maxlen=maxlen)
+    'aspr_min_prices': deque(maxlen=maxlen),
+    'aspr_max_prices': deque(maxlen=maxlen)
 }
 
 class LiveGraphUpdater:
@@ -42,8 +42,8 @@ class LiveGraphUpdater:
             price = return_dict['price']
             ema = return_dict['EMA']
             tema = return_dict['TEMA']
-            mamplitude = return_dict['MAmplitude']
-            pamplitude = return_dict['PAmplitude']
+            base_mamplitude = return_dict['base_mamplitude']
+            base_pamplitude = return_dict['base_pamplitude']
             cross_direction = return_dict['Cross_Direction']
             cross_price_up = return_dict['Cross_Price_Up']
             cross_price_down = return_dict['Cross_Price_Down']
@@ -53,21 +53,21 @@ class LiveGraphUpdater:
             peak_travel = return_dict['Peak_Travel']  # Add this
             min_price = return_dict['Min_Price']
             max_price = return_dict['Max_Price']
-            xmin_price = return_dict['XMin_Price']  # Add XMin_Price
-            xmax_price = return_dict['XMax_Price']  # Add XMax_Price
+            aspr_min_price = return_dict['aspr_min_price']  # Add aspr_min_price
+            aspr_max_price = return_dict['aspr_max_price']  # Add aspr_max_price
 
             # Add data to collections
             live_data['timestamps'].append(timestamp)
             live_data['prices'].append(price)
             live_data['emas'].append(ema)
             live_data['temas'].append(tema)
-            live_data['mamplitudes'].append(mamplitude)
-            live_data['pamplitudes'].append(pamplitude)
+            live_data['base_mamplitudes'].append(base_mamplitude)
+            live_data['base_pamplitudes'].append(base_pamplitude)
             live_data['peak_travels'].append(peak_travel)  # Add this
             live_data['min_prices'].append(min_price)
             live_data['max_prices'].append(max_price)
-            live_data['xmin_prices'].append(xmin_price)  # Add XMin_Price to live data
-            live_data['xmax_prices'].append(xmax_price)  # Add XMax_P
+            live_data['aspr_min_prices'].append(aspr_min_price)  # Add aspr_min_price to live data
+            live_data['aspr_max_prices'].append(aspr_max_price)  # Add aspr_max_P
             
             # Handle cross points
             live_data['cross_ups'].append(cross_price_up)
@@ -83,15 +83,15 @@ class LiveGraphUpdater:
                 'price': price,
                 'ema': ema,
                 'tema': tema,
-                'mamplitude': mamplitude,
-                'pamplitude': pamplitude,
+                'base_mamplitude': base_mamplitude,
+                'base_pamplitude': base_pamplitude,
                 'peak_travel': peak_travel,  # Add this
                 'cross_direction': cross_direction,
                 'peak_cross_direction': peak_cross_direction,  # Add this
                 'min_price': min_price,
                 'max_price': max_price,
-                'xmin_price': xmin_price,  # Add XMin_Price
-                'xmax_price': xmax_price,  # Add XMax_Price
+                'aspr_min_price': aspr_min_price,  # Add aspr_min_price
+                'aspr_max_price': aspr_max_price,  # Add aspr_max_price
                 'data_points': len(live_data['timestamps'])
             }
                     
@@ -121,10 +121,10 @@ class LiveGraphUpdater:
                 peak_travels_list = list(live_data['peak_travels'])  # Add this
                 min_prices_list = list(live_data['min_prices'])
                 max_prices_list = list(live_data['max_prices'])
-                xmin_prices_list = list(live_data['xmin_prices'])
-                xmax_prices_list = list(live_data['xmax_prices'])
-                mamplitudes_list = list(live_data['mamplitudes'])
-                pamplitudes_list = list(live_data['pamplitudes'])
+                aspr_min_prices_list = list(live_data['aspr_min_prices'])
+                aspr_max_prices_list = list(live_data['aspr_max_prices'])
+                base_mamplitudes_list = list(live_data['base_mamplitudes'])
+                base_pamplitudes_list = list(live_data['base_pamplitudes'])
                 
                 # Find start and end indices
                 start_idx = 0
@@ -154,12 +154,12 @@ class LiveGraphUpdater:
                 peak_cross_ups_filtered = peak_cross_ups_list[start_idx:end_idx]  # Add this
                 peak_cross_downs_filtered = peak_cross_downs_list[start_idx:end_idx]  # Add this
                 peak_travels_filtered = peak_travels_list[start_idx:end_idx]  # Add this
-                mamplitudes_filtered = mamplitudes_list[start_idx:end_idx]
-                pamplitudes_filtered = pamplitudes_list[start_idx:end_idx]
+                base_mamplitudes_filtered = base_mamplitudes_list[start_idx:end_idx]
+                base_pamplitudes_filtered = base_pamplitudes_list[start_idx:end_idx]
                 min_prices_filtered = min_prices_list[start_idx:end_idx]
                 max_prices_filtered = max_prices_list[start_idx:end_idx]
-                xmin_prices_filtered = xmin_prices_list[start_idx:end_idx]
-                xmax_prices_filtered = xmax_prices_list[start_idx:end_idx]
+                aspr_min_prices_filtered = aspr_min_prices_list[start_idx:end_idx]
+                aspr_max_prices_filtered = aspr_max_prices_list[start_idx:end_idx]
             else:
                 # Use all data
                 timestamps_filtered = list(live_data['timestamps'])
@@ -171,12 +171,12 @@ class LiveGraphUpdater:
                 peak_cross_ups_filtered = list(live_data['peak_cross_ups'])  # Add this
                 peak_cross_downs_filtered = list(live_data['peak_cross_downs'])  # Add this
                 peak_travels_filtered = list(live_data['peak_travels'])  # Add this
-                mamplitudes_filtered = list(live_data['mamplitudes'])
-                pamplitudes_filtered = list(live_data['pamplitudes'])
+                base_mamplitudes_filtered = list(live_data['base_mamplitudes'])
+                base_pamplitudes_filtered = list(live_data['base_pamplitudes'])
                 min_prices_filtered = list(live_data['min_prices'])
                 max_prices_filtered = list(live_data['max_prices'])
-                xmin_prices_filtered = list(live_data['xmin_prices'])
-                xmax_prices_filtered = list(live_data['xmax_prices'])
+                aspr_min_prices_filtered = list(live_data['aspr_min_prices'])
+                aspr_max_prices_filtered = list(live_data['aspr_max_prices'])
             
             if not timestamps_filtered:
                 return None
@@ -276,20 +276,20 @@ class LiveGraphUpdater:
                 'marker': {'symbol': 'star', 'size': 10, 'color': 'darkgreen', 'opacity': 1}
             }
 
-            xmin_price_trace = {
+            aspr_min_price_trace = {
                 'x': timestamps_str,
-                'y': xmin_prices_filtered,
+                'y': aspr_min_prices_filtered,
                 'mode': 'markers',
-                'name': 'XMin Price',
+                'name': 'aspr_min Price',
                 'marker': {'symbol': 'diamond', 'size': 8, 'color': 'darkred', 'opacity': 1}
             }
 
-            # XMax price trace
-            xmax_price_trace = {
+            # aspr_max price trace
+            aspr_max_price_trace = {
                 'x': timestamps_str,
-                'y': xmax_prices_filtered,
+                'y': aspr_max_prices_filtered,
                 'mode': 'markers',
-                'name': 'XMax Price',
+                'name': 'aspr_max Price',
                 'marker': {'symbol': 'diamond', 'size': 8, 'color': 'darkgreen', 'opacity': 1}
             }
 
@@ -304,22 +304,22 @@ class LiveGraphUpdater:
                 'hovertemplate': f'Current Price: {current_price:.5f}<extra></extra>'
             }
 
-            # MAmplitude trace
-            mamplitude_trace = {
+            # base_mamplitude trace
+            base_mamplitude_trace = {
                 'x': timestamps_str,
-                'y': mamplitudes_filtered,
+                'y': base_mamplitudes_filtered,
                 'mode': 'lines',
-                'name': 'MAmplitude',
+                'name': 'base_mamplitude',
                 'line': {'color': 'orange', 'width': 1, 'opacity': 0.1},
                 'yaxis': 'y2'
             }
 
-            # PAmplitude trace
-            pamplitude_trace = {
+            # base_pamplitude trace
+            base_pamplitude_trace = {
                 'x': timestamps_str,
-                'y': pamplitudes_filtered,
+                'y': base_pamplitudes_filtered,
                 'mode': 'lines',
-                'name': 'PAmplitude',
+                'name': 'base_pamplitude',
                 'line': {'color': 'lightblue', 'width': 1, 'opacity': 0.1},
                 'yaxis': 'y2'
             }
@@ -331,14 +331,14 @@ class LiveGraphUpdater:
                 'hovermode': 'x unified',
                 'xaxis': {'title': 'Time'},
                 'yaxis': {'title': 'Price', 'side': 'left'},
-                'yaxis2': {'title': 'MAmplitude %', 'side': 'right', 'overlaying': 'y'},
+                'yaxis2': {'title': 'base_mamplitude %', 'side': 'right', 'overlaying': 'y'},
             }
             
             return {
                 'data': [price_trace, ema_trace, tema_trace, cross_up_trace, cross_down_trace, 
                         peak_cross_up_trace, peak_cross_down_trace, peak_travel_trace, 
-                        min_price_trace, max_price_trace, xmin_price_trace, xmax_price_trace, 
-                        current_price_line, pamplitude_trace, mamplitude_trace],
+                        min_price_trace, max_price_trace, aspr_min_price_trace, aspr_max_price_trace, 
+                        current_price_line, base_pamplitude_trace, base_mamplitude_trace],
                 'layout': layout
             }
             

@@ -217,12 +217,12 @@
                 <div class="stat-label">TEMA</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value" id="current-mamplitude">--</div>
-                <div class="stat-label">MAmplitude %</div>
+                <div class="stat-value" id="current-base_mamplitude">--</div>
+                <div class="stat-label">base_mamplitude %</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value" id="current-pamplitude">--</div>
-                <div class="stat-label">PAmplitude %</div>
+                <div class="stat-value" id="current-base_pamplitude">--</div>
+                <div class="stat-label">base_pamplitude %</div>
             </div>
             <div class="stat-item">
                 <div class="stat-value" id="current-peak-travel">--</div>
@@ -251,11 +251,11 @@
                 <label><input type="checkbox" data-series="Peak Travel" checked> Peak Travel</label>
                 <label><input type="checkbox" data-series="Min Price" checked> Min Price</label>
                 <label><input type="checkbox" data-series="Max Price" checked> Max Price</label>
-                <label><input type="checkbox" data-series="XMin Price" checked> XMin Price</label>
-                <label><input type="checkbox" data-series="XMax Price" checked> XMax Price</label>
+                <label><input type="checkbox" data-series="aspr_min Price" checked> aspr_min Price</label>
+                <label><input type="checkbox" data-series="aspr_max Price" checked> aspr_max Price</label>
                 <label><input type="checkbox" data-series="Current Price Line" checked> Current Price Line</label>
-                <label><input type="checkbox" data-series="MAmplitude" checked> MAmplitude</label>
-                <label><input type="checkbox" data-series="PAmplitude" checked> PAmplitude</label>
+                <label><input type="checkbox" data-series="base_mamplitude" checked> base_mamplitude</label>
+                <label><input type="checkbox" data-series="base_pamplitude" checked> base_pamplitude</label>
             </div>
             <button class="btn" onclick="applyVisibilityFilters()">Apply Filters</button>
             <button class="btn" onclick="resetVisibilityFilters()">Show All</button>
@@ -283,8 +283,8 @@
             document.getElementById('current-price').textContent = data.price ? data.price.toFixed(5) : '--';
             document.getElementById('current-ema').textContent = data.ema ? data.ema.toFixed(5) : '--';
             document.getElementById('current-tema').textContent = data.tema ? data.tema.toFixed(5) : '--';
-            document.getElementById('current-mamplitude').textContent = data.mamplitude ? data.mamplitude.toFixed(3) : '--';
-            document.getElementById('current-pamplitude').textContent = data.pamplitude ? data.pamplitude.toFixed(3) : '--';
+            document.getElementById('current-base_mamplitude').textContent = data.base_mamplitude ? data.base_mamplitude.toFixed(3) : '--';
+            document.getElementById('current-base_pamplitude').textContent = data.base_pamplitude ? data.base_pamplitude.toFixed(3) : '--';
             document.getElementById('current-peak-travel').textContent = data.peak_travel ? data.peak_travel.toFixed(3) : '--';  // Add this
             document.getElementById('last-update').textContent = data.timestamp || '--';
             document.getElementById('data-points').textContent = data.data_points || '--';
@@ -516,11 +516,11 @@
             'Peak Travel': true,  // Add this
             'Min Price': true,
             'Max Price': true,
-            'XMin Price': true,
-            'XMax Price': true,
+            'aspr_min Price': true,
+            'aspr_max Price': true,
             'Current Price Line': true,
-            'MAmplitude': true,
-            'PAmplitude': true
+            'base_mamplitude': true,
+            'base_pamplitude': true
         };
         
         // Apply filters without fetching new data
