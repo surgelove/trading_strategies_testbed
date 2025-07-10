@@ -27,18 +27,20 @@ class Algo:
     - Supports all four MA types with time-based logic
     """
 
-    def __init__(self, interval1, interval2):
+    def __init__(self, base_interval, asperity_interval, peak_interval=None):
         # 1. Create the calculator
-        self.ema_calc = TimeBasedStreamingMA(interval1, ma_type='EMA')
-        self.tema_calc = TimeBasedStreamingMA(interval1, ma_type='TEMA')
-        self.xema_calc = TimeBasedStreamingMA(interval2, ma_type='EMA')
-        self.xtema_calc = TimeBasedStreamingMA(interval2, ma_type='TEMA')
+        self.ema_calc = TimeBasedStreamingMA(base_interval, ma_type='EMA')
+        self.tema_calc = TimeBasedStreamingMA(base_interval, ma_type='TEMA')
+        self.xema_calc = TimeBasedStreamingMA(asperity_interval, ma_type='EMA')
+        self.xtema_calc = TimeBasedStreamingMA(asperity_interval, ma_type='TEMA')
+        self.ptema_calc = TimeBasedStreamingMA(peak_interval, ma_type='TEMA')
 
         # initialize the json that will hold timestamp price and ema values
         self.ema_values = []
         self.tema_values = []
         self.xema_values = []
-        self.xtema_values = []  
+        self.xtema_values = []
+        self.ptema_values = []
         self.mamplitudes = []
         self.pamplitudes = []  # List to hold PAmplitude values
 
@@ -92,6 +94,23 @@ class Algo:
         xtema = round(self.xtema_calc.add_data_point(timestamp, price), precision)
         self.xema_values.append(xema)
         self.xtema_values.append(xtema)
+
+        ptema = round(self.ptema_calc.add_data_point(timestamp, price), precision)
+        self.ptema_values.append(ptema)
+
+
+
+        # when price crosses ptema, detect the direction
+        pcross_price_up = None
+        pcross_price_down = None
+        pcross_direction = None
+        if len(self.ptema_values) > 1:
+            if (self.ptema_values[-1] > price and self.ptema_values[-2] <= price):
+                pcross_direction = 1
+                pcross_price_up = price  # Store the price at which the cross occurred
+            elif (self.ptema_values[-1] < price and self.ptema_values[-2] >= price):
+                pcross_direction = -1
+                pcross_price_down = price  # Store the price at which the cross occurred
 
         # when xtema crosses xema, detect the direction
         xcross_direction = None
@@ -274,6 +293,9 @@ class Algo:
             'Cross_Price': cross_price,
             'Cross_Price_Up': cross_price_up,
             'Cross_Price_Down': cross_price_down,
+            'Peak_Cross_Direction': pcross_direction,
+            'PCross_Price_Up': pcross_price_up,
+            'PCross_Price_Down': pcross_price_down,
             'Min_Price': self.min_prices[-1],
             'Max_Price': self.max_prices[-1],
             'XMin_Price': self.xmin_prices[-1],
@@ -2007,7 +2029,7 @@ with open('secrets.json', 'r') as f:
 instrument = input("Instrument (e.g., USD_CAD): ")
 
 precision = get_instrument_precision(credentials, instrument)  # Get precision from the mean price
-purple = Algo(interval1='15min', interval2='2min')  # Create an instance of the Algo class with 15-minute intervals
+purple = Algo(base_interval='15min', asperity_interval='2min', peak_interval='1min')  # Create an instance of the Algo class with 15-minute intervals
 
 
 # Start the Flask server in a background thread
