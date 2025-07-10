@@ -27,10 +27,12 @@ class Algo:
     - Supports all four MA types with time-based logic
     """
 
-    def __init__(self, base_interval, aspr_interval, peak_interval=None):
-        # 1. Create the calculator
+    def __init__(self, base_interval, slow_interval, aspr_interval, peak_interval=None):
+
         self.base_ema_calc = TimeBasedStreamingMA(base_interval, ma_type='EMA')
         self.base_tema_calc = TimeBasedStreamingMA(base_interval, ma_type='TEMA')
+        self.slow_ema_calc = TimeBasedStreamingMA(slow_interval, ma_type='EMA')
+        self.slow_tema_calc = TimeBasedStreamingMA(slow_interval, ma_type='TEMA')
         self.aspr_ema_calc = TimeBasedStreamingMA(aspr_interval, ma_type='EMA')
         self.aspr_tema_calc = TimeBasedStreamingMA(aspr_interval, ma_type='TEMA')
         self.peak_ema_calc = TimeBasedStreamingMA(peak_interval, ma_type='EMA')
@@ -40,6 +42,8 @@ class Algo:
         # initialize the json that will hold timestamp price and ema values
         self.base_ema_values = []
         self.base_tema_values = []
+        self.slow_ema_values = []
+        self.slow_tema_values = []
         self.aspr_ema_values = []
         self.aspr_tema_values = []
         self.peak_ema_values = []
@@ -2105,7 +2109,7 @@ with open('secrets.json', 'r') as f:
 instrument = input("Instrument (e.g., USD_CAD): ")
 
 precision = get_instrument_precision(credentials, instrument)  # Get precision from the mean price
-purple = Algo(base_interval='2min', aspr_interval='3min', peak_interval='2min')  # Create an instance of the Algo class with 15-minute intervals
+purple = Algo(base_interval='15min', slow_interval='30min',aspr_interval='3min', peak_interval='2min')  # Create an instance of the Algo class with 15-minute intervals
 
 
 # Start the Flask server in a background thread
