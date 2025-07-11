@@ -36,3 +36,43 @@ def say_hello():
     engine.say("Hello")
     engine.runAndWait()
 
+class TimeBasedMovement:
+
+    def __init__(self, range):
+        self.data = []  # Fixed: added 'self.' prefix
+        self.range = range
+        self.max_size = 500
+
+    def add(self, timestamp, price):
+        self.data.append(
+            {
+                "timestamp": timestamp,
+                "price": price,
+            }
+        )
+        
+        # Remove oldest data if queue exceeds max size
+        if len(self.data) > self.max_size:
+            self.data.pop(0)
+
+    def calc(self):
+        # Calculate the movement of the price for the last 5 minutes
+        if len(self.data) < 2:
+            return 0.0
+
+        # Get the price data for the last 5 minutes
+        range_ago = self.data[-1]["timestamp"] - self.range * 60
+        relevant_data = [d for d in self.data if d["timestamp"] > range_ago]
+
+        if not relevant_data:
+            return 0.0
+
+        # Calculate the price movement percentage
+        start_price = relevant_data[0]["price"]
+        end_price = relevant_data[-1]["price"]
+        
+        # Avoid division by zero
+        if start_price == 0:
+            return 0.0
+            
+        return ((end_price - start_price) / start_price) * 100
