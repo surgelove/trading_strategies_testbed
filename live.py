@@ -57,27 +57,27 @@ class Algo:
         self.base_cross_prices_up = []  # List to hold cross up prices
         self.base_cross_prices_down = []  # List to hold cross down prices
 
-        self.min_prices = []  # List to hold minimum prices since cross down
-        self.max_prices = []  # List to hold maximum prices since cross up
-        self.min_price = None  # keeps track of the minimum price
-        self.max_price = None  # keeps track of the maximum price
-        self.min_price_latest = None  # keeps track of the latest minimum price
-        self.max_price_latest = None  # keeps track of the latest maximum price
+        self.base_min_prices = []  # List to hold minimum prices since cross down
+        self.base_max_prices = []  # List to hold maximum prices since cross up
+        self.base_min_price = None  # keeps track of the minimum price
+        self.base_max_price = None  # keeps track of the maximum price
+        self.base_min_price_latest = None  # keeps track of the latest minimum price
+        self.base_max_price_latest = None  # keeps track of the latest maximum price
 
         self.aspr_min_prices = []  # List to hold minimum prices since cross down for aspr_ema
         self.aspr_max_prices = []
         self.aspr_min_price = None
         self.aspr_max_price = None
 
-        self.travels = []  # List to hold travel values
-        self.travel = None  # keeps track of the travel from min to max after cross up
+        self.base_travels = []  # List to hold travel values
+        self.base_travel = None  # keeps track of the travel from min to max after cross up
 
-        self.enough_base_mamplitude = False  # Flag to indicate if amplitude is greater than 0.02
+        self.base_mamplitude_enough = False  # Flag to indicate if amplitude is greater than 0.02
 
-        self.cross_price_previous = None  # Previous cross price
-        self.enough_base_pamplitude = False  # Flag to indicate if amplitude is greater than 0.002
+        self.base_cross_price_previous = None  # Previous cross price
+        self.base_pamplitude_enough = False  # Flag to indicate if amplitude is greater than 0.002
 
-        self.cross_direction_previous = 0  # Previous cross direction
+        self.base_cross_direction_previous = 0  # Previous cross direction
         
         # Add tracking for maximum amplitudes
         self.base_mamplitude_max = 0  # Track maximum base_mamplitude since last reset
@@ -86,28 +86,25 @@ class Algo:
         self.base_mamplitude_threshold = 0.002  # Threshold for base_mamplitude to be considered significant
         self.base_pamplitude_threshold = 0.001  # Threshold for base_pamplitude to be considered significant
         self.peak_travel_threshold = 0.04  # Threshold for peak travel to be considered significant
-        self.peaks_counter_threshold = 3
-        self.peaks_counter_up = 0
-        self.peaks_counter_dn = 0
 
-        self.pcross_price_previous = None  # Previous price for peak cross detection
-        self.price_above_peak_ema = False  # Price above peak_ema for peak cross detection
-        self.price_below_peak_ema = False  # Price below peak_ema for peak cross detection
-        self.price_crossed_peak_dema_up = False  # Flag to indicate if price crossed peak_ema
-        self.price_crossed_peak_dema_dn = False  # Flag to indicate if price crossed peak_ema
+        self.peak_cross_price_previous = None  # Previous price for peak cross detection
+        # self.peak_price_above = False  # Price above peak_ema for peak cross detection
+        # self.peak_price_below = False  # Price below peak_ema for peak cross detection
+        self.peak_price_crossed_up = False  # Flag to indicate if price crossed peak_ema
+        self.peak_price_crossed_dn = False  # Flag to indicate if price crossed peak_ema
 
-        self.pcross_price_dn = None  # Price when peak cross down occurs
-        self.pcross_price_up = None  # Price when peak cross up occurs
+        self.peak_cross_price_dn = None  # Price when peak cross down occurs
+        self.peak_cross_price_up = None  # Price when peak cross up occurs
 
-        self.ptravel = 0
+        self.peak_travel = 0
 
-        self.pcross_direction = None
+        self.peak_cross_direction = None
 
     def process_row(self, timestamp, price, precision, say):
 
         threshold = 0.00005  # Threshold for ignoring min/max prices close to current price
-        if not self.cross_price_previous:
-            self.cross_price_previous = price
+        if not self.base_cross_price_previous:
+            self.base_cross_price_previous = price
 
         # Calculate EMA and TEMA for the current price
         base_ema = round(self.base_ema_calc.add_data_point(timestamp, price), precision)
@@ -128,88 +125,78 @@ class Algo:
         self.peak_dema_values.append(peak_dema)
 
         # when peak_tema crosses peak_ema, start detectng travel from one direction to the other in percentage
-        if self.pcross_price_previous:
-            new_travel = abs((self.pcross_price_previous - price) / self.pcross_price_previous * 100)
-            if new_travel > self.ptravel:
-                self.ptravel = new_travel
+        if self.peak_cross_price_previous:
+            new_travel = abs((self.peak_cross_price_previous - price) / self.peak_cross_price_previous * 100)
+            if new_travel > self.peak_travel:
+                self.peak_travel = new_travel
         else:
-            self.ptravel = 0
+            self.peak_travel = 0
         if len(self.peak_ema_values) > 1 and len(self.peak_tema_values) > 1:
             if (self.peak_tema_values[-1] > self.peak_ema_values[-1] and self.peak_tema_values[-2] <= self.peak_ema_values[-2]):
-                self.pcross_price_previous = price
-                self.ptravel = 0
-                self.price_below_peak_ema = False
-                self.pcross_direction = 1   
-                self.peaks_counter_up += 1
+                self.peak_cross_price_previous = price
+                self.peak_travel = 0
+                # self.peak_price_below = False
+                self.peak_cross_direction = 1   
             elif (self.peak_tema_values[-1] < self.peak_ema_values[-1] and self.peak_tema_values[-2] >= self.peak_ema_values[-2]):
-                self.pcross_price_previous = price
-                self.ptravel = 0
-                self.price_above_peak_ema = False
-                self.pcross_direction = -1
-                self.peaks_counter_dn += 1
+                self.peak_cross_price_previous = price
+                self.peak_travel = 0
+                # self.peak_price_above = False
+                self.peak_cross_direction = -1
 
         # when price crosses peak_ema, detect the direction
-        pcross_price_up = None
-        pcross_price_dn = None
+        peak_cross_price_up = None
+        peak_cross_price_dn = None
         if len(self.peak_dema_values) > 1:
             # Fix: Compare price positions relative to peak_ema, not peak_ema relative to price
             if price > self.peak_dema_values[-1]:
-                self.price_crossed_peak_dema_dn = False                 # Since we are above the peak_ema, reset the fact that we crossed down, so we can go below it again
-                if self.pcross_direction == -1:                         # if we are going down
-                    if self.ptravel > self.peak_travel_threshold:       # if the price traveled enough from the last cross
-                        if not self.price_crossed_peak_dema_up:         # if we haven't crossed up the peak_dema already
-                            if not self.pcross_price_up or price < self.pcross_price_up:
-                                pcross_price_up = price                     # signal up at that price so a bar above should be drawn 
+                self.peak_price_crossed_dn = False                 # Since we are above the peak_ema, reset the fact that we crossed down, so we can go below it again
+                if self.peak_cross_direction == -1:                         # if we are going down
+                    if self.peak_travel > self.peak_travel_threshold:       # if the price traveled enough from the last cross
+                        if not self.peak_price_crossed_up:         # if we haven't crossed up the peak_dema already
+                            if not self.peak_cross_price_up or price < self.peak_cross_price_up:
+                                peak_cross_price_up = price                     # signal up at that price so a bar above should be drawn 
                                 
-                                self.pcross_price_up = pcross_price_up      # remember the price when we crossed up
-                                self.price_crossed_peak_dema_up = True      # remember that we crossed up the peak_ema
+                                self.peak_cross_price_up = peak_cross_price_up      # remember the price when we crossed up
+                                self.peak_price_crossed_up = True      # remember that we crossed up the peak_ema
                     else:
                         ...
-                        # if self.pcross_price_up and price < self.pcross_price_up:
-                        #     pcross_price_up = price
-                        #     self.pcross_price_up = pcross_price_up
+                        # if self.peak_cross_price_up and price < self.peak_cross_price_up:
+                        #     peak_cross_price_up = price
+                        #     self.peak_cross_price_up = peak_cross_price_up
 
 
             elif price < self.peak_dema_values[-1]:
-                self.price_crossed_peak_dema_up = False                     # Since we are below the peak_ema, reset the fact that we crossed up, so we can go above it again
-                if self.pcross_direction == 1:                              # if we are going up   
-                    if self.ptravel > self.peak_travel_threshold:           # if the price traveled enough from the last cross
-                        if not self.price_crossed_peak_dema_dn:             # if we haven't crossed down the peak_dema already
-                            if not self.pcross_price_dn or price > self.pcross_price_dn: 
-                                pcross_price_dn = price                     # signal down at that price so a bar above should be drawn  
+                self.peak_price_crossed_up = False                     # Since we are below the peak_ema, reset the fact that we crossed up, so we can go above it again
+                if self.peak_cross_direction == 1:                              # if we are going up   
+                    if self.peak_travel > self.peak_travel_threshold:           # if the price traveled enough from the last cross
+                        if not self.peak_price_crossed_dn:             # if we haven't crossed down the peak_dema already
+                            if not self.peak_cross_price_dn or price > self.peak_cross_price_dn: 
+                                peak_cross_price_dn = price                     # signal down at that price so a bar above should be drawn  
                                 
-                                self.pcross_price_dn = pcross_price_dn      # remember the price when we crossed down
-                                self.price_crossed_peak_dema_dn = True      # remember that we crossed down the peak_ema
+                                self.peak_cross_price_dn = peak_cross_price_dn      # remember the price when we crossed down
+                                self.peak_price_crossed_dn = True      # remember that we crossed down the peak_ema
                     else:
                         ...
-                        # if self.pcross_price_dn and price > self.pcross_price_dn:
-                        #     pcross_price_dn = price
-                        #     self.pcross_price_dn = pcross_price_dn
+                        # if self.peak_cross_price_dn and price > self.peak_cross_price_dn:
+                        #     peak_cross_price_dn = price
+                        #     self.peak_cross_price_dn = peak_cross_price_dn
 
-        # if self.pcross_direction and self.pcross_direction > 0:
-        #     if self.ptravel > 0.02 or self.peaks_counter_up > self.peaks_counter_threshold:
-        #         self.pcross_price_up = None
-        #         self.peaks_counter_up = 0
-        # elif self.pcross_direction and self.pcross_direction < 0:
-        #     if self.ptravel > 0.02 or self.peaks_counter_dn > self.peaks_counter_threshold:
-        #         self.pcross_price_dn = None
-        #         self.peaks_counter_dn = 0
 
 
         # when aspr_tema crosses aspr_ema, detect the direction
-        xcross_direction = None
+        aspr_cross_direction = None
         if len(self.aspr_ema_values) > 1 and len(self.aspr_tema_values) > 1:
             if (self.aspr_tema_values[-1] > self.aspr_ema_values[-1] and self.aspr_tema_values[-2] <= self.aspr_ema_values[-2]):
-                xcross_direction = 1
+                aspr_cross_direction = 1
             elif (self.aspr_tema_values[-1] < self.aspr_ema_values[-1] and self.aspr_tema_values[-2] >= self.aspr_ema_values[-2]):
-                xcross_direction = -1
+                aspr_cross_direction = -1
         
         # every row, calculate the min price of all prices since last cross down
         if self.aspr_min_price is None:
             self.aspr_min_price = price
         if price < self.aspr_min_price:
             self.aspr_min_price = price
-        if xcross_direction == 1:  # If last cross was down
+        if aspr_cross_direction == 1:  # If last cross was down
             # if max price is too close in % from price itself, ignore it
             if self.aspr_min_price is not None:
                 # print number as format 0.0000000 no matter how small
@@ -229,7 +216,7 @@ class Algo:
             self.aspr_max_price = price
         if price > self.aspr_max_price:
             self.aspr_max_price = price
-        if xcross_direction == -1:  # If last cross was up
+        if aspr_cross_direction == -1:  # If last cross was up
             # if max price is too close in % from price itself, ignore it
             if self.aspr_max_price is not None:
                 print(f"{self.aspr_max_price:.8f} {price:.8f}")
@@ -257,11 +244,11 @@ class Algo:
         
         self.base_mamplitudes.append(base_mamplitude)  # Append the amplitude to the list
         if base_mamplitude > self.base_mamplitude_threshold:
-            self.enough_base_mamplitude = True  # Set flag if amplitude is greater than 0.002
+            self.base_mamplitude_enough = True  # Set flag if amplitude is greater than 0.002
 
 
         base_pamplitude = None
-        base_pamplitude_temp = round(abs(price - self.cross_price_previous), precision)  # Calculate the amplitude between current price and previous cross price
+        base_pamplitude_temp = round(abs(price - self.base_cross_price_previous), precision)  # Calculate the amplitude between current price and previous cross price
         # percent of price
         base_pamplitude_current = round((base_pamplitude_temp / price) * 100, precision) if price != 0 else 0
         
@@ -272,115 +259,115 @@ class Algo:
         
         self.base_pamplitudes.append(base_pamplitude)  # Append the amplitude to the list
         if base_pamplitude > self.base_pamplitude_threshold:
-            self.enough_base_pamplitude = True
+            self.base_pamplitude_enough = True
 
         #  When tema crosses ema, detect the direction
-        take = False
-        cross_direction = None
-        cross_price = None
-        cross_price_up = None
-        cross_price_down = None
+        base_take = False
+        base_cross_direction = None
+        base_cross_price = None
+        base_cross_price_up = None
+        base_cross_price_down = None
         if len(self.base_ema_values) > 1 and len(self.base_tema_values) > 1:
             if (self.base_tema_values[-1] > self.base_ema_values[-1] and self.base_tema_values[-2] <= self.base_ema_values[-2]):
-                self.cross_price_previous = price
-                if self.cross_direction_previous in [0,-1]:  # If last cross was down
+                self.base_cross_price_previous = price
+                if self.base_cross_direction_previous in [0,-1]:  # If last cross was down
                     if price > base_ema or price > base_tema:  # Check if price is above EMA or TEMA
-                        if self.enough_base_mamplitude or self.enough_base_pamplitude:
-                            cross_price = price
-                            cross_price_up = price  # Store the price at which the cross occurred
+                        if self.base_mamplitude_enough or self.base_pamplitude_enough:
+                            base_cross_price = price
+                            base_cross_price_up = price  # Store the price at which the cross occurred
                             if say: say_nonblocking("Cross up detected", voice="Alex")
-                            take = 1
+                            base_take = 1
                         # print('up', cross_price, timestamp, tema_values[-1], ema_values[-1])  # Print timestamp and values
                         else:
                             if say: say_nonblocking("Cross up detected but not enough amplitude", voice="Alex")
-                        cross_direction = 1
-                        print(f'{timestamp} - Price: {price}, EMA: {base_ema}, TEMA: {base_tema}, E base_mamplitude: {self.enough_base_mamplitude}, Cross Direction: {cross_direction}')
-                        self.enough_base_mamplitude = False  # Reset flag after cross up
-                        self.enough_base_pamplitude = False
+                        base_cross_direction = 1
+                        print(f'{timestamp} - Price: {price}, EMA: {base_ema}, TEMA: {base_tema}, E base_mamplitude: {self.base_mamplitude_enough}, Cross Direction: {base_cross_direction}')
+                        self.base_mamplitude_enough = False  # Reset flag after cross up
+                        self.base_pamplitude_enough = False
                         self.base_mamplitude_max = 0  # Reset max base_mamplitude
                         self.base_pamplitude_max = 0  # Reset max base_pamplitude
-                        self.cross_direction_previous = 1
+                        self.base_cross_direction_previous = 1
 
             elif (self.base_tema_values[-1] < self.base_ema_values[-1] and self.base_tema_values[-2] >= self.base_ema_values[-2]):
-                self.cross_price_previous = price
-                if self.cross_direction_previous in [0,1]:  # If last cross was up
+                self.base_cross_price_previous = price
+                if self.base_cross_direction_previous in [0,1]:  # If last cross was up
                     if price < base_ema or price < base_tema:  # Check if price is below EMA
-                        if self.enough_base_mamplitude or self.enough_base_pamplitude:
-                            cross_price = price
-                            cross_price_down = price  # Store the price at which the cross occurred
+                        if self.base_mamplitude_enough or self.base_pamplitude_enough:
+                            base_cross_price = price
+                            base_cross_price_down = price  # Store the price at which the cross occurred
                             if say: say_nonblocking("Cross down detected", voice="Samantha")
-                            take = -1
+                            base_take = -1
                         else:
                             if say: say_nonblocking("Cross down detected but not enough amplitude", voice="Samantha")
-                        cross_direction = -1
-                        print(f'{timestamp } - Price: {price}, EMA: {base_ema}, TEMA: {base_tema}, E base_mamplitude: {self.enough_base_mamplitude}, Cross Direction: {cross_direction}')
-                        self.enough_base_mamplitude = False
-                        self.enough_base_pamplitude = False
+                        base_cross_direction = -1
+                        print(f'{timestamp } - Price: {price}, EMA: {base_ema}, TEMA: {base_tema}, E base_mamplitude: {self.base_mamplitude_enough}, Cross Direction: {base_cross_direction}')
+                        self.base_mamplitude_enough = False
+                        self.base_pamplitude_enough = False
                         self.base_mamplitude_max = 0  # Reset max base_mamplitude
                         self.base_pamplitude_max = 0  # Reset max base_pamplitude
-                        self.cross_direction_previous = -1
+                        self.base_cross_direction_previous = -1
 
 
-        self.base_cross_directions.append(cross_direction)  # Append cross direction to the list
-        self.base_cross_prices.append(cross_price)  # Append cross price to the list
-        self.base_cross_prices_up.append(cross_price_up)  # Append cross price up to the list
-        self.base_cross_prices_down.append(cross_price_down)  # Append cross price down to the list
+        self.base_cross_directions.append(base_cross_direction)  # Append cross direction to the list
+        self.base_cross_prices.append(base_cross_price)  # Append cross price to the list
+        self.base_cross_prices_up.append(base_cross_price_up)  # Append cross price up to the list
+        self.base_cross_prices_down.append(base_cross_price_down)  # Append cross price down to the list
 
         # when it crosses up, calculate the travel from min to max
-        travel = None
-        if cross_direction == 1:  # If last cross was up
+        base_travel = None
+        if base_cross_direction == 1:  # If last cross was up
             # Calculate the travel from min to max
-            if self.min_price_latest is not None and self.max_price_latest is not None:
-                travel = round(abs(self.max_price_latest - self.min_price_latest), precision)  # Travel from min to max
+            if self.base_min_price_latest is not None and self.base_max_price_latest is not None:
+                base_travel = round(abs(self.base_max_price_latest - self.base_min_price_latest), precision)  # Travel from min to max
             # convert travel to percentage of min price
-            if self.min_price_latest is not None and travel is not None:
-                travel = round((travel / self.min_price_latest) * 100, precision)
-        self.travels.append(travel)  # Append travel value to the list
+            if self.base_min_price_latest is not None and base_travel is not None:
+                base_travel = round((base_travel / self.base_min_price_latest) * 100, precision)
+        self.base_travels.append(base_travel)  # Append travel value to the list
 
         # every row, calculate the min price of all prices since last cross down
-        if self.min_price is None:
-            self.min_price = price
-        if price < self.min_price:
-            self.min_price = price
-        if cross_direction == 1:  # If last cross was down
-            self.min_prices.append(self.min_price)  # Append the minimum price since last cross down
-            self.min_price_latest = self.min_price  # Update latest min price
-            self.min_price = None  # Reset min price after cross down
+        if self.base_min_price is None:
+            self.base_min_price = price
+        if price < self.base_min_price:
+            self.base_min_price = price
+        if base_cross_direction == 1:  # If last cross was down
+            self.base_min_prices.append(self.base_min_price)  # Append the minimum price since last cross down
+            self.base_min_price_latest = self.base_min_price  # Update latest min price
+            self.base_min_price = None  # Reset min price after cross down
         else:
-            self.min_prices.append(None)
+            self.base_min_prices.append(None)
 
         # every row, calculate the max price of all prices since last cross up
-        if self.max_price is None:
-            self.max_price = price
-        if price > self.max_price:
-            self.max_price = price
-        if cross_direction == -1:  # If last cross was up
-            self.max_prices.append(self.max_price)  # Append the maximum price since last cross up
-            self.max_price_latest = self.max_price  # Update latest max price
-            self.max_price = None  # Reset max price after cross up
+        if self.base_max_price is None:
+            self.base_max_price = price
+        if price > self.base_max_price:
+            self.base_max_price = price
+        if base_cross_direction == -1:  # If last cross was up
+            self.base_max_prices.append(self.base_max_price)  # Append the maximum price since last cross up
+            self.base_max_price_latest = self.base_max_price  # Update latest max price
+            self.base_max_price = None  # Reset max price after cross up
         else:
-            self.max_prices.append(None)
+            self.base_max_prices.append(None)
 
         return_dict = {
             'timestamp': timestamp,
             'price': price,
-            'EMA': base_ema,
-            'TEMA': base_tema,
+            'base_ema': base_ema,
+            'base_tema': base_tema,
             'base_mamplitude': base_mamplitude,
             'base_pamplitude': base_pamplitude,
-            'Cross_Direction': cross_direction,
-            'Cross_Price': cross_price,
-            'Cross_Price_Up': cross_price_up,
-            'Cross_Price_Down': cross_price_down,
-            'Peak_Cross_Direction': self.pcross_direction,
-            'Peak_Cross_Price_Up': pcross_price_up,
-            'Peak_Cross_Price_Down': pcross_price_dn,
-            'Peak_Travel': self.ptravel,
-            'Min_Price': self.min_prices[-1],
-            'Max_Price': self.max_prices[-1],
+            'base_cross_direction': base_cross_direction,
+            'base_cross_price': base_cross_price,
+            'base_cross_price_up': base_cross_price_up,
+            'base_cross_price_down': base_cross_price_down,
+            'peak_cross_direction': self.peak_cross_direction,
+            'peak_cross_price_up': peak_cross_price_up,
+            'peak_cross_price_dn': peak_cross_price_dn,
+            'peak_travel': self.peak_travel,
+            'base_min_price': self.base_min_prices[-1],
+            'base_max_price': self.base_max_prices[-1],
             'aspr_min_price': self.aspr_min_prices[-1],
             'aspr_max_price': self.aspr_max_prices[-1],
-            'Travel': travel,
+            'Travel': base_travel,
             # 'Take': take
         }
 
@@ -1328,7 +1315,7 @@ def get_instrument_precision(credentials, instrument_name):
         return None
     
 
-def get_oanda_data(credentials, instrument='USD_CAD', granularity='S5', hours=5):
+def get_oanda_data(credentials, instrument='USD_CAD', granularity='S5', hours=5, rows=5000):
     """
     Connect to OANDA live fxtrade environment and fetch real market data
     
@@ -1389,16 +1376,16 @@ def get_oanda_data(credentials, instrument='USD_CAD', granularity='S5', hours=5)
     
     # Calculate count based on granularity and hours
     if granularity == 'S5':
-        count = min(hours * 60 * 12, 5000)  # 12 five-second intervals per minute, max 5000
+        count = min(hours * 60 * 12, rows)  # 12 five-second intervals per minute, max 5000
     elif granularity == 'S10':
-        count = min(hours * 60 * 6, 5000)   # 6 ten-second intervals per minute
+        count = min(hours * 60 * 6, rows)   # 6 ten-second intervals per minute
     elif granularity == 'M1':
-        count = min(hours * 60, 5000)       # 60 one-minute intervals per hour
+        count = min(hours * 60, rows)       # 60 one-minute intervals per hour
     elif granularity == 'M5':
-        count = min(hours * 12, 5000)       # 12 five-minute intervals per hour
+        count = min(hours * 12, rows)       # 12 five-minute intervals per hour
     else:
-        count = min(7200, 5000)  # Default fallback
-    
+        count = min(7200, rows)  # Default fallback
+
     # API endpoint for historical candles
     url = f"{BASE_URL}/v3/instruments/{instrument}/candles"
     
@@ -2123,12 +2110,15 @@ print("📝 Controls: Spacebar = pause/resume updates, R = refresh now")
 # Wait a moment for server to start
 time.sleep(3)
 
+rows = int(input("Number of rows to fetch for live data (default 5000): "))
+
 # Before streaming, get the historical data for that instrument from oanda
 historical_data = get_oanda_data(
     credentials=credentials,
     instrument=instrument,
     granularity='S5',  # 5-second granularity
-    hours=8  # Fetch 1 hour of historical data
+    hours=8,  # Fetch 1 hour of historical data
+    rows=rows  # Fetch up to 5000 rows of historical data
 )
 
 historical_df = pd.DataFrame(historical_data)
