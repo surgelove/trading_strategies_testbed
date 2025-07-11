@@ -449,6 +449,13 @@ class Algo:
 
         self.peak_cross_direction = None
 
+        self.peak_distance = 2  # Distance in pips from the peak
+
+        self.xtpk_distance = 2  # Distance in pips from the extreme peak
+        self.xtpk_price = None
+        self.xtpk_price_following = None
+        self.xtpk_found = False
+
     def process_row(self, timestamp, price, precision, say):
 
         threshold = 0.00005  # Threshold for ignoring min/max prices close to current price
@@ -475,8 +482,8 @@ class Algo:
 
         # when peak_tema crosses peak_ema, start detectng travel from one direction to the other in percentage
         if self.peak_cross_price_previous:
-            new_travel = abs((self.peak_cross_price_previous - price) / self.peak_cross_price_previous * 100)
-            if new_travel > self.peak_travel:
+            new_travel = (price - self.peak_cross_price_previous) / self.peak_cross_price_previous * 100
+            if abs(new_travel) > abs(self.peak_travel):
                 self.peak_travel = new_travel
         else:
             self.peak_travel = 0
@@ -500,7 +507,7 @@ class Algo:
             if price > self.peak_dema_values[-1]:
                 self.peak_price_crossed_dn = False                 # Since we are above the peak_ema, reset the fact that we crossed down, so we can go below it again
                 if self.peak_cross_direction == -1:                         # if we are going down
-                    if self.peak_travel > self.peak_travel_threshold:       # if the price traveled enough from the last cross
+                    if abs(self.peak_travel) > self.peak_travel_threshold:       # if the price traveled enough from the last cross
                         if not self.peak_price_crossed_up:         # if we haven't crossed up the peak_dema already
                             if not self.peak_cross_price_up or price < self.peak_cross_price_up:
                                 peak_cross_price_up = price                     # signal up at that price so a bar above should be drawn 
@@ -517,7 +524,7 @@ class Algo:
             elif price < self.peak_dema_values[-1]:
                 self.peak_price_crossed_up = False                     # Since we are below the peak_ema, reset the fact that we crossed up, so we can go above it again
                 if self.peak_cross_direction == 1:                              # if we are going up   
-                    if self.peak_travel > self.peak_travel_threshold:           # if the price traveled enough from the last cross
+                    if abs(self.peak_travel) > self.peak_travel_threshold:           # if the price traveled enough from the last cross
                         if not self.peak_price_crossed_dn:             # if we haven't crossed down the peak_dema already
                             if not self.peak_cross_price_dn or price > self.peak_cross_price_dn: 
                                 peak_cross_price_dn = price                     # signal down at that price so a bar above should be drawn  
@@ -530,6 +537,29 @@ class Algo:
                         #     peak_cross_price_dn = price
                         #     self.peak_cross_price_dn = peak_cross_price_dn
 
+        # Extreme peak: when price is dramatically going in one direction, set a following price at extreme peak distance
+        xtpk_cross_price = None
+        if abs(self.peak_travel) > self.peak_travel_threshold:
+            if self.peak_travel > 0:  # if we are going up
+                ...
+                # if price > self.xtpk_price:
+                #     self.xtpk_price = price
+                #     self.xtpk_price_following = price - self.xtpk_distance * 0.0001  # Set following price at extreme peak distance
+                #     if price < self.xtpk_price_following:
+                #         xtpk_cross_price = price
+                #         print(f"{timestamp} XTPK: {xtpk_cross_price:.8f} Following: {self.xtpk_price_following:.8f}")
+            elif self.peak_travel < 0:  # if we are going down
+                if self.xtpk_price is None or price < self.xtpk_price:
+                    self.xtpk_price = price
+                    self.xtpk_price_following = price + self.xtpk_distance * 0.0001  # Set following price at extreme peak distance
+                    print(f"Following: {self.xtpk_price_following:.8f}")
+                else:
+                    if self.xtpk_price_following:
+                        if price > self.xtpk_price_following:
+                            if not self.xtpk_found:  # Only set xtpk_cross_price if it hasn't been found yet
+                                xtpk_cross_price = price
+                                self.xtpk_found = True
+                                print(f"{timestamp} XTPK: {xtpk_cross_price:.8f} Following: {self.xtpk_price_following:.8f}")
 
 
         # when aspr_tema crosses aspr_ema, detect the direction
@@ -711,7 +741,8 @@ class Algo:
             'peak_cross_direction': self.peak_cross_direction,
             'peak_cross_price_up': peak_cross_price_up,
             'peak_cross_price_dn': peak_cross_price_dn,
-            'peak_travel': self.peak_travel,
+            'peak_travel': abs(self.peak_travel),
+            'xtpk_cross_price': xtpk_cross_price,
             'base_min_price': self.base_min_prices[-1],
             'base_max_price': self.base_max_prices[-1],
             'aspr_min_price': self.aspr_min_prices[-1],
