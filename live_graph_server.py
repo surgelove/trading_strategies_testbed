@@ -400,11 +400,9 @@ def get_status():
 
 def run_server():
     """Run the Flask server"""
-    """Run the Flask server"""
     print("🌐 Starting Flask server...")
-    print("📁 Template directory:", app.template_folder)
     try:
-        # Disable Flask logging
+        # Disable Flask logging to reduce startup overhead
         import logging
         log = logging.getLogger('werkzeug')
         log.setLevel(logging.ERROR)  # Only show errors, not request logs

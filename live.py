@@ -1713,6 +1713,8 @@ def create_oanda_orders(credentials, instrument, side,
     distance : float
         Distance in pips from current price (only for STOP and LIMIT orders)
     stop_loss : float
+
+
         Stop loss distance in pips (e.g., 20 means 20 pips stop loss)
         - For BUY orders: stop loss placed BELOW entry price
         - For SELL orders: stop loss placed ABOVE entry price
@@ -2111,41 +2113,42 @@ print("📝 Controls: Spacebar = pause/resume updates, R = refresh now")
 time.sleep(3)
 
 rows = int(input("Number of rows to fetch for live data (default 5000): "))
+rows = min(rows, 1000)  # Limit rows to 1000 to reduce startup time
 
 # Before streaming, get the historical data for that instrument from oanda
 historical_data = get_oanda_data(
     credentials=credentials,
     instrument=instrument,
     granularity='S5',  # 5-second granularity
-    hours=8,  # Fetch 1 hour of historical data
-    rows=rows  # Fetch up to 5000 rows of historical data
+    hours=8,  # Fetch 8 hours of historical data
+    rows=rows  # Fetch up to 1000 rows of historical data
 )
 
 historical_df = pd.DataFrame(historical_data)
 historical_df['timestamp'] = pd.to_datetime(historical_df['timestamp'])
 historical_df = historical_df.drop_duplicates(subset=['timestamp'], keep='last')
-# historical_df.to_csv('historical_data.csv', index=False)
 
-
-# for each row in historical_df, process it with the Algo instance
-for _, row in historical_df.iterrows():
-    timestamp = row['timestamp']
-    price = round(row['price'], precision)
-    
-    # Process the historical data row with the Algo instance
-    take, return_dict = purple.process_row(timestamp, price, precision, say=False)
-    
-    # Update the live graph with historical data
-    graph_updater.update_graph(return_dict)
-
+# Process historical data in batches to reduce memory usage
+batch_size = 100
+for i in range(0, len(historical_df), batch_size):
+    batch = historical_df.iloc[i:i + batch_size]
+    for _, row in batch.iterrows():
+        timestamp = row['timestamp']
+        price = round(row['price'], precision)
+        
+        # Process the historical data row with the Algo instance
+        take, return_dict = purple.process_row(timestamp, price, precision, say=False)
+        
+        # Update the live graph with historical data
+        graph_updater.update_graph(return_dict)
 
 # Start the trading script in a separate thread
 trading_thread = threading.Thread(target=run_trading_script, args=(credentials,), daemon=True)
 trading_thread.start()
 
-# Run the GUI in the main thread
+# Run the Tkinter GUI in the main thread
 root = tk.Tk()
-root.title("Hello GUI")
+root.title("Trading GUI")
 
 # Add a button to the GUI
 hello_button = tk.Button(root, text="Say Hello", command=say_hello)
