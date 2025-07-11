@@ -254,8 +254,10 @@
                 <label><input type="checkbox" data-series="Peak Cross Down" checked> Peak Cross Down</label>
                 <label><input type="checkbox" data-series="Peak Travel" checked> Peak Travel</label>
                 <label><input type="checkbox" data-series="XTPK Cross Price Up" checked> XTPK Cross Price Up</label>
+                <label><input type="checkbox" data-series="XTPK Cross Price Down" checked> XTPK Cross Price Down</label>
                 <label><input type="checkbox" data-series="XTPK Movement" checked> XTPK Movement</label>
                 <label><input type="checkbox" data-series="XTPK Price Following Down" checked> XTPK Price Following Down</label>
+                <label><input type="checkbox" data-series="XTPK Price Following Up" checked> XTPK Price Following Up</label>
                 <label><input type="checkbox" data-series="Base Min Price" checked> Base Min Price</label>
                 <label><input type="checkbox" data-series="Base Max Price" checked> Base Max Price</label>
                 <label><input type="checkbox" data-series="Aspr Min Price" checked> Aspr Min Price</label>
@@ -285,6 +287,30 @@
         let crossCount = 0;
         let currentTimeRange = 60; // Default to 60 minutes
         let showAllDataMode = false;
+        
+        // Store visibility preferences - fix series names to match trace names
+        let seriesVisibility = {
+            'Price': true,
+            'Base EMA': true,
+            'Base TEMA': true,
+            'Base Cross Up': true,
+            'Base Cross Down': true,
+            'Peak Cross Up': true,
+            'Peak Cross Down': true,
+            'Peak Travel': true,
+            'XTPK Cross Price Up': true,
+            'XTPK Cross Price Down': true,
+            'XTPK Movement': true,
+            'XTPK Price Following Down': true,
+            'XTPK Price Following Up': true,
+            'Base Min Price': true,
+            'Base Max Price': true,
+            'Aspr Min Price': true,
+            'Aspr Max Price': true,
+            'Current Price Line': true,
+            'Base Mamplitude': true,
+            'Base Pamplitude': true
+        };
         
         function updateStats(data) {
             document.getElementById('current-price').textContent = data.price ? data.price.toFixed(5) : '--';
@@ -450,10 +476,8 @@
         function resetVisibilityFilters() {
             document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(checkbox => {
                 checkbox.checked = true;
-            });
-            
-            Object.keys(seriesVisibility).forEach(key => {
-                seriesVisibility[key] = true;
+                const seriesName = checkbox.getAttribute('data-series');
+                seriesVisibility[seriesName] = true;
             });
             
             // Apply to graph
@@ -500,6 +524,12 @@
         
         // Start when page loads
         window.addEventListener('load', function() {
+            // Set initial checkbox states
+            document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(checkbox => {
+                const seriesName = checkbox.getAttribute('data-series');
+                checkbox.checked = seriesVisibility[seriesName];
+            });
+            
             setTimeout(startUpdating, 1000); // Wait 1 second for server to be ready
         });
         
@@ -512,28 +542,6 @@
             }
         });
 
-        // Store visibility preferences - fix series names to match trace names
-        let seriesVisibility = {
-            'Price': true,
-            'Base EMA': true,
-            'Base TEMA': true,
-            'Base Cross Up': true,
-            'Base Cross Down': true,
-            'Peak Cross Up': true,
-            'Peak Cross Down': true,
-            'Peak Travel': true,
-            'XTPK Cross Price Up': true,
-            'XTPK Movement': true,
-            'XTPK Price Following Down': true,
-            'Base Min Price': true,
-            'Base Max Price': true,
-            'Aspr Min Price': true,
-            'Aspr Max Price': true,
-            'Current Price Line': true,
-            'Base Mamplitude': true,
-            'Base Pamplitude': true
-        };
-        
         // Apply filters without fetching new data - add error checking
         function applyVisibilityFilters() {
             // Update visibility preferences from checkboxes
@@ -553,65 +561,6 @@
                 }
             });
         }
-        
-        // Reset all filters to visible - add error checking
-        function resetVisibilityFilters() {
-            document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = true;
-                const seriesName = checkbox.getAttribute('data-series');
-                seriesVisibility[seriesName] = true;
-            });
-            
-            // Apply to graph
-            const graphDiv = document.getElementById('graph');
-            if (!graphDiv || !graphDiv.data) return;
-            
-            graphDiv.data.forEach((trace, index) => {
-                Plotly.restyle(graphDiv, {visible: true}, [index]);
-            });
-        }
-        
-        // Hide all filters - add error checking
-        function hideAllFilters() {
-            document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = false;
-                const seriesName = checkbox.getAttribute('data-series');
-                seriesVisibility[seriesName] = false;
-            });
-            
-            // Apply to graph
-            const graphDiv = document.getElementById('graph');
-            if (!graphDiv || !graphDiv.data) return;
-            
-            graphDiv.data.forEach((trace, index) => {
-                Plotly.restyle(graphDiv, {visible: false}, [index]);
-            });
-        }
-        
-        // Add keyboard controls
-        document.addEventListener('keydown', function(event) {
-            if (event.key === ' ') { // Spacebar to pause/resume
-                event.preventDefault();
-                if (updateInterval) {
-                    stopUpdating();
-                } else {
-                    startUpdating();
-                }
-            } else if (event.key === 'r' || event.key === 'R') { // R to refresh now
-                refreshNow();
-            }
-        });
-        
-        // Start when page loads
-        window.addEventListener('load', function() {
-            // Set initial checkbox states
-            document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(checkbox => {
-                const seriesName = checkbox.getAttribute('data-series');
-                checkbox.checked = seriesVisibility[seriesName];
-            });
-            
-            setTimeout(startUpdating, 1000); // Wait 1 second for server to be ready
-        });
     </script>
 </body>
 </html>

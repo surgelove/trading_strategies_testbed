@@ -24,8 +24,10 @@ live_data = {
     'peak_cross_price_downs': deque(maxlen=maxlen),  # Add this
     'peak_travels': deque(maxlen=maxlen),  # Add this
     'xtpk_cross_price_ups': deque(maxlen=maxlen),  # Add xtpk_cross_price_up
+    'xtpk_cross_price_dns': deque(maxlen=maxlen),  # Add xtpk_cross_price_dn
     'xtpk_movements': deque(maxlen=maxlen),  # Add xtpk_movement
     'xtpk_price_dn_followings': deque(maxlen=maxlen),  # Add xtpk_price_dn_following
+    'xtpk_price_up_followings': deque(maxlen=maxlen),  # Add xtpk_price_up_following
     'base_mamplitudes': deque(maxlen=maxlen),
     'base_pamplitudes': deque(maxlen=maxlen),
     'base_min_prices': deque(maxlen=maxlen),
@@ -55,8 +57,10 @@ class LiveGraphUpdater:
             peak_cross_price_down = return_dict['peak_cross_price_dn']  # Add this
             peak_travel = return_dict['peak_travel']  # Add this
             xtpk_cross_price_up = return_dict['xtpk_cross_price_up']  # Add xtpk_cross_price_up
+            xtpk_cross_price_dn = return_dict['xtpk_cross_price_dn']  # Add xtpk_cross_price_dn
             xtpk_movement = return_dict['xtpk_movement']  # Add xtpk_movement
             xtpk_price_dn_following = return_dict['xtpk_price_dn_following']  # Add xtpk_price_dn_following
+            xtpk_price_up_following = return_dict['xtpk_price_up_following']  # Add xtpk_price_up_following
             base_min_price = return_dict['base_min_price']
             base_max_price = return_dict['base_max_price']
             aspr_min_price = return_dict['aspr_min_price']  # Add aspr_min_price
@@ -71,8 +75,10 @@ class LiveGraphUpdater:
             live_data['base_pamplitudes'].append(base_pamplitude)
             live_data['peak_travels'].append(peak_travel)  # Add this
             live_data['xtpk_cross_price_ups'].append(xtpk_cross_price_up)  # Add xtpk_cross_price_up
+            live_data['xtpk_cross_price_dns'].append(xtpk_cross_price_dn)  # Add xtpk_cross_price_dn
             live_data['xtpk_movements'].append(xtpk_movement)  # Add xtpk_movement
             live_data['xtpk_price_dn_followings'].append(xtpk_price_dn_following)  # Add xtpk_price_dn_following
+            live_data['xtpk_price_up_followings'].append(xtpk_price_up_following)  # Add xtpk_price_up_following
             live_data['base_min_prices'].append(base_min_price)
             live_data['base_max_prices'].append(base_max_price)
             live_data['aspr_min_prices'].append(aspr_min_price)  # Add aspr_min_price to live data
@@ -130,8 +136,10 @@ class LiveGraphUpdater:
                 peak_cross_price_downs_list = list(live_data['peak_cross_price_downs'])  # Add this
                 peak_travels_list = list(live_data['peak_travels'])  # Add this
                 xtpk_cross_price_ups_list = list(live_data['xtpk_cross_price_ups'])  # Add xtpk_cross_price_up
+                xtpk_cross_price_dns_list = list(live_data['xtpk_cross_price_dns'])  # Add xtpk_cross_price_dn
                 xtpk_movements_list = list(live_data['xtpk_movements'])  # Add xtpk_movement
                 xtpk_price_dn_followings_list = list(live_data['xtpk_price_dn_followings'])  # Add xtpk_price_dn_following
+                xtpk_price_up_followings_list = list(live_data['xtpk_price_up_followings'])  # Add xtpk_price_up_following
                 base_min_prices_list = list(live_data['base_min_prices'])
                 base_max_prices_list = list(live_data['base_max_prices'])
                 aspr_min_prices_list = list(live_data['aspr_min_prices'])
@@ -168,8 +176,10 @@ class LiveGraphUpdater:
                 peak_cross_downs_filtered = peak_cross_price_downs_list[start_idx:end_idx]  # Add this
                 peak_travels_filtered = peak_travels_list[start_idx:end_idx]  # Add this
                 xtpk_cross_price_ups_filtered = xtpk_cross_price_ups_list[start_idx:end_idx]  # Add xtpk_cross_price_up
+                xtpk_cross_price_dns_filtered = list(live_data['xtpk_cross_price_dns'])[start_idx:end_idx]  # Add xtpk_cross_price_dn
                 xtpk_movements_filtered = xtpk_movements_list[start_idx:end_idx]  # Add xtpk_movement
                 xtpk_price_dn_followings_filtered = xtpk_price_dn_followings_list[start_idx:end_idx]  # Add xtpk_price_dn_following
+                xtpk_price_up_followings_filtered = list(live_data['xtpk_price_up_followings'])[start_idx:end_idx]  # Add xtpk_price_up_following
                 base_mamplitudes_filtered = base_mamplitudes_list[start_idx:end_idx]
                 base_pamplitudes_filtered = base_pamplitudes_list[start_idx:end_idx]
                 base_min_prices_filtered = base_min_prices_list[start_idx:end_idx]
@@ -188,8 +198,10 @@ class LiveGraphUpdater:
                 peak_cross_downs_filtered = list(live_data['peak_cross_price_downs'])  # Add this
                 peak_travels_filtered = list(live_data['peak_travels'])  # Add this
                 xtpk_cross_price_ups_filtered = list(live_data['xtpk_cross_price_ups'])  # Add xtpk_cross_price_up
+                xtpk_cross_price_dns_filtered = list(live_data['xtpk_cross_price_dns'])  # Add xtpk_cross_price_dn
                 xtpk_movements_filtered = list(live_data['xtpk_movements'])  # Add xtpk_movement
                 xtpk_price_dn_followings_filtered = list(live_data['xtpk_price_dn_followings'])  # Add xtpk_price_dn_following
+                xtpk_price_up_followings_filtered = list(live_data['xtpk_price_up_followings'])  # Add xtpk_price_up_following
                 base_mamplitudes_filtered = list(live_data['base_mamplitudes'])
                 base_pamplitudes_filtered = list(live_data['base_pamplitudes'])
                 base_min_prices_filtered = list(live_data['base_min_prices'])
@@ -351,6 +363,15 @@ class LiveGraphUpdater:
                 'marker': {'symbol': 'triangle-up', 'size': 8, 'color': 'lightgreen', 'line': {'color': 'green', 'width': 2}}
             }
 
+            # XTPK Cross Price Down trace - Add this new trace
+            xtpk_cross_price_dn_trace = {
+                'x': timestamps_str,
+                'y': xtpk_cross_price_dns_filtered,
+                'mode': 'markers',
+                'name': 'XTPK Cross Price Down',
+                'marker': {'symbol': 'triangle-down', 'size': 8, 'color': 'lightcoral', 'line': {'color': 'red', 'width': 2}}
+            }
+
             # XTPK Movement trace - Add this new trace
             xtpk_movement_trace = {
                 'x': timestamps_str,
@@ -368,6 +389,15 @@ class LiveGraphUpdater:
                 'mode': 'lines',
                 'name': 'XTPK Price Following Down',
                 'line': {'color': 'purple', 'width': 3}
+            }
+
+            # XTPK Price Following Up trace - Add this new trace
+            xtpk_price_up_following_trace = {
+                'x': timestamps_str,
+                'y': xtpk_price_up_followings_filtered,
+                'mode': 'lines',
+                'name': 'XTPK Price Following Up',
+                'line': {'color': 'orange', 'width': 3}
             }
 
             # # TEMA trace
@@ -393,7 +423,8 @@ class LiveGraphUpdater:
             return {
                 'data': [price_trace, base_ema_trace, base_tema_trace, base_cross_up_trace, base_cross_down_trace, 
                         peak_cross_up_trace, peak_cross_down_trace, peak_travel_trace, xtpk_cross_price_up_trace,
-                        xtpk_movement_trace, xtpk_price_dn_following_trace, base_min_price_trace, base_max_price_trace, 
+                        xtpk_cross_price_dn_trace, xtpk_movement_trace, xtpk_price_dn_following_trace, 
+                        xtpk_price_up_following_trace, base_min_price_trace, base_max_price_trace, 
                         aspr_min_price_trace, aspr_max_price_trace, current_price_line, base_pamplitude_trace, base_mamplitude_trace],
                 'layout': layout
             }
@@ -465,8 +496,9 @@ def run_server():
         
         app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False, threaded=True)
     except Exception as e:
-        print(f"❌ Server error: {e}")
         print(traceback.format_exc())
+        print(f"❌ Error starting server: {e}")
+        print(f"❌ Server error: {e}")
 
 if __name__ == '__main__':
     run_server()
