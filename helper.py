@@ -56,6 +56,10 @@ class TimeBasedMovement:
         if len(self.data) > self.max_size:
             self.data.pop(0)
 
+    def clear(self):
+        """Clear the stored data."""
+        self.data = []
+
     def calc(self):
         # Calculate the movement of the price for the last 5 minutes
         if len(self.data) < 2:

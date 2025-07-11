@@ -148,7 +148,7 @@ rows = min(rows, 1000)  # Limit rows to 1000 to reduce startup time
 historical_data = get_oanda_data(
     credentials=credentials,
     instrument=instrument,
-    granularity='S5',  # 5-second granularity
+    granularity='S30',  # 5-second granularity
     hours=8,  # Fetch 8 hours of historical data
     rows=rows  # Fetch up to 1000 rows of historical data
 )

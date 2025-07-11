@@ -1,5 +1,3 @@
-
-
 from collections import deque
 import pandas as pd
 from datetime import datetime, timedelta
@@ -390,7 +388,7 @@ class Algo:
         self.peak_tema_calc = TimeBasedStreamingMA(peak_interval, ma_type='TEMA')
         self.peak_dema_calc = TimeBasedStreamingMA(peak_interval, ma_type='DEMA')
 
-        self.movement_calculator = TimeBasedMovement(range=2)
+        self.movement_calculator = TimeBasedMovement(range=3)
 
         # initialize the json that will hold timestamp price and ema values
         self.base_ema_values = []
@@ -451,16 +449,24 @@ class Algo:
 
         self.peak_travel = 0
 
-        self.peak_cross_direction = None
+        self.peak_cross_direction = 0
 
         self.peak_distance = 2  # Distance in pips from the peak
 
-        self.xtpk_distance = 1  # Distance in pips from the extreme peak
-        self.xtpk_price = None
-        self.xtpk_price_following = None
-        self.xtpk_found = False
+        self.xtpk_distance = 4  # Distance in pips from the extreme peak
+        
+
         self.xtpk_travel = 0
-        self.xtpk_travel_threshold = 0.04 
+        self.xtpk_movement_threshold = 0.05
+        self.xtpk_travel_threshold = 0.06
+        self.xtpk_movement = 0.05  # Track extreme peak movement
+
+        self.xtpk_price_dn = None
+        self.xtpk_price_dn_following = None
+        self.xtpk_price_dn_following_crossed = False
+        self.xtpk_price_up = None
+        self.xtpk_price_up_following = None
+        self.xtpk_price_up_following_crossed = False
 
     def process_row(self, timestamp, price, precision, say):
 
@@ -486,7 +492,9 @@ class Algo:
         self.peak_tema_values.append(peak_tema)
         self.peak_dema_values.append(peak_dema)
 
+        # region peak
         # when peak_tema crosses peak_ema, start detectng travel from one direction to the other in percentage
+        peak_direction_change = 0
         if self.peak_cross_price_previous:
             new_travel = (price - self.peak_cross_price_previous) / self.peak_cross_price_previous * 100
             if abs(new_travel) > abs(self.peak_travel):
@@ -499,11 +507,13 @@ class Algo:
                 self.peak_travel = 0
                 # self.peak_price_below = False
                 self.peak_cross_direction = 1   
+                peak_direction_change = 1
             elif (self.peak_tema_values[-1] < self.peak_ema_values[-1] and self.peak_tema_values[-2] >= self.peak_ema_values[-2]):
                 self.peak_cross_price_previous = price
                 self.peak_travel = 0
                 # self.peak_price_above = False
                 self.peak_cross_direction = -1
+                peak_direction_change = -1
 
         # when price crosses peak_ema, detect the direction
         peak_cross_price_up = None
@@ -542,38 +552,72 @@ class Algo:
                         # if self.peak_cross_price_dn and price > self.peak_cross_price_dn:
                         #     peak_cross_price_dn = price
                         #     self.peak_cross_price_dn = peak_cross_price_dn
-
+        # endregion peak
 
         # Extreme peak: calculate movement of last 5 minutes
         self.movement_calculator.add(timestamp, price)
-        xtpk_movement = abs(self.movement_calculator.calc())
+        movement = self.movement_calculator.calc()
+        if abs(movement) > self.xtpk_movement:
+            self.xtpk_movement = movement
+        # self.xtpk_movement = movement
 
+        self.xtpk_movement_threshold = 0.04
+        self.xtpk_travel_threshold = 0.05
+        self.xtpk_distance = 2
+        
         # Extreme peak: when price is dramatically going in one direction, set a following price at extreme peak distance
-        xtpk_cross_price = None
-        # if abs(self.xtpk_travel) > self.xtpk_travel_threshold:
-        if xtpk_movement > self.xtpk_travel_threshold:
-            if self.peak_travel > 0:  # if we are going up
-                ...
-                # if price > self.xtpk_price:
-                #     self.xtpk_price = price
-                #     self.xtpk_price_following = price - self.xtpk_distance * 0.0001  # Set following price at extreme peak distance
-                #     if price < self.xtpk_price_following:
-                #         xtpk_cross_price = price
-                #         print(f"{timestamp} XTPK: {xtpk_cross_price:.8f} Following: {self.xtpk_price_following:.8f}")
-            elif self.peak_travel < 0:  # if we are going down
-                if self.xtpk_price is None or price < self.xtpk_price:
-                    self.xtpk_price = price
-                    self.xtpk_price_following = price + self.xtpk_distance * 0.0001  # Set following price at extreme peak distance
-                    print(f"Following: {self.xtpk_price_following:.8f}")
-                else:
-                    if self.xtpk_price_following:
-                        if price > self.xtpk_price_following:
-                            if not self.xtpk_found:  # Only set xtpk_cross_price if it hasn't been found yet
-                                xtpk_cross_price = price
-                                self.xtpk_found = True
-                                print(f"{timestamp} XTPK: {xtpk_cross_price:.8f} Following: {self.xtpk_price_following:.8f}")
+        xtpk_cross_price_up = None
+        xtpk_cross_price_dn = None
+        if self.peak_cross_direction > 0:  # if we are going up
+            if abs(self.xtpk_movement) > self.xtpk_movement_threshold and abs(self.peak_travel) > self.xtpk_travel_threshold:
+                if self.xtpk_price_up is None or price > self.xtpk_price_up:
+                    self.xtpk_price_up = price
+                    self.xtpk_price_up_following = price - self.xtpk_distance * 0.0001
 
+        elif self.peak_cross_direction < 0:  # if we are going down
+            if abs(self.xtpk_movement) > self.xtpk_movement_threshold and abs(self.peak_travel) > self.xtpk_travel_threshold:
+                if self.xtpk_price_dn is None or price < self.xtpk_price_dn:
+                    self.xtpk_price_dn = price
+                    self.xtpk_price_dn_following = price + self.xtpk_distance * 0.0001  # Set following price at extreme peak distance
+        
+        # Follow the price up until it crosses
+        if self.xtpk_price_up_following:
+            if price < self.xtpk_price_up_following:
+                if not self.xtpk_price_up_following_crossed:
+                    xtpk_cross_price_dn = price
+                    self.xtpk_price_up_following_crossed = True
+            elif price > self.xtpk_price_up_following:
+                self.xtpk_price_up_following_crossed = False
 
+        # Follow the price down until it crosses
+        if self.xtpk_price_dn_following:
+            if price > self.xtpk_price_dn_following:
+                if not self.xtpk_price_dn_following_crossed:
+                    xtpk_cross_price_up = price
+                    self.xtpk_price_dn_following_crossed = True
+            elif price < self.xtpk_price_dn_following:
+                self.xtpk_price_dn_following_crossed = False
+                
+
+        if peak_direction_change:
+            self.movement_calculator.clear()  # Clear the movement calculator when peak direction changes
+            self.xtpk_movement = 0
+            self.xtpk_price_dn = None  
+            self.xtpk_price_dn_following = None
+            self.xtpk_price_dn_following_crossed = False
+            self.xtpk_price_up = None
+            self.xtpk_price_up_following = None
+            self.xtpk_price_up_following_crossed = False
+
+        if peak_direction_change > 0:
+            ... # peak direction changed to up
+        elif peak_direction_change < 0:
+            ...
+            # self.xtpk_movement = 0
+            # self.xtpk_price_dn = None  
+            # self.xtpk_price_dn_following = None
+            # self.xtpk_price_dn_following_crossed = False
+            ... # peak direction changed to down
 
         # when aspr_tema crosses aspr_ema, detect the direction
         aspr_cross_direction = None
@@ -755,8 +799,11 @@ class Algo:
             'peak_cross_price_up': peak_cross_price_up,
             'peak_cross_price_dn': peak_cross_price_dn,
             'peak_travel': abs(self.peak_travel),
-            'xtpk_cross_price': xtpk_cross_price,
-            'xtpk_movement': xtpk_movement,
+            'xtpk_cross_price_up': xtpk_cross_price_up,
+            'xtpk_cross_price_dn': xtpk_cross_price_dn,
+            'xtpk_price_dn_following': self.xtpk_price_dn_following,
+            'xtpk_price_up_following': self.xtpk_price_up_following,
+            'xtpk_movement': abs(self.xtpk_movement),
             'base_min_price': self.base_min_prices[-1],
             'base_max_price': self.base_max_prices[-1],
             'aspr_min_price': self.aspr_min_prices[-1],
@@ -764,6 +811,8 @@ class Algo:
             'Travel': base_travel,
             # 'Take': take
         }
+
+        return base_take, return_dict
 
         return base_take, return_dict
         
