@@ -229,6 +229,10 @@
                 <div class="stat-label">Peak Travel %</div>
             </div>
             <div class="stat-item">
+                <div class="stat-value" id="current-xtpk-movement">--</div>
+                <div class="stat-label">XTPK Movement %</div>
+            </div>
+            <div class="stat-item">
                 <div class="stat-value" id="last-update">--</div>
                 <div class="stat-label">Last Update</div>
             </div>
@@ -250,6 +254,7 @@
                 <label><input type="checkbox" data-series="Peak Cross Down" checked> Peak Cross Down</label>
                 <label><input type="checkbox" data-series="Peak Travel" checked> Peak Travel</label>
                 <label><input type="checkbox" data-series="XTPK Cross" checked> XTPK Cross</label>
+                <label><input type="checkbox" data-series="XTPK Movement" checked> XTPK Movement</label>
                 <label><input type="checkbox" data-series="Base Min Price" checked> Base Min Price</label>
                 <label><input type="checkbox" data-series="Base Max Price" checked> Base Max Price</label>
                 <label><input type="checkbox" data-series="Aspr Min Price" checked> Aspr Min Price</label>
@@ -287,6 +292,7 @@
             document.getElementById('current-base_mamplitude').textContent = data.base_mamplitude ? data.base_mamplitude.toFixed(3) : '--';
             document.getElementById('current-base_pamplitude').textContent = data.base_pamplitude ? data.base_pamplitude.toFixed(3) : '--';
             document.getElementById('current-peak-travel').textContent = data.peak_travel ? data.peak_travel.toFixed(3) : '--';
+            document.getElementById('current-xtpk-movement').textContent = data.xtpk_movement ? data.xtpk_movement.toFixed(3) : '--';
             document.getElementById('last-update').textContent = data.timestamp || '--';
             document.getElementById('data-points').textContent = data.data_points || '--';
             
@@ -516,6 +522,7 @@
             'Peak Cross Down': true,
             'Peak Travel': true,
             'XTPK Cross': true,
+            'XTPK Movement': true,
             'Base Min Price': true,
             'Base Max Price': true,
             'Aspr Min Price': true,

@@ -61,7 +61,7 @@ class TimeBasedMovement:
         if len(self.data) < 2:
             return 0.0
 
-        # Get the price data for the last 5 minutes
+        # Get the price data for the last n minutes
         range_ago = self.data[-1]["timestamp"] - pd.Timedelta(minutes=self.range)
         relevant_data = [d for d in self.data if d["timestamp"] > range_ago]
 

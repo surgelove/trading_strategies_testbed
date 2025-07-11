@@ -24,6 +24,7 @@ live_data = {
     'peak_cross_price_downs': deque(maxlen=maxlen),  # Add this
     'peak_travels': deque(maxlen=maxlen),  # Add this
     'xtpk_cross_prices': deque(maxlen=maxlen),  # Add xtpk_cross_price
+    'xtpk_movements': deque(maxlen=maxlen),  # Add xtpk_movement
     'base_mamplitudes': deque(maxlen=maxlen),
     'base_pamplitudes': deque(maxlen=maxlen),
     'base_min_prices': deque(maxlen=maxlen),
@@ -53,6 +54,7 @@ class LiveGraphUpdater:
             peak_cross_price_down = return_dict['peak_cross_price_dn']  # Add this
             peak_travel = return_dict['peak_travel']  # Add this
             xtpk_cross_price = return_dict['xtpk_cross_price']  # Add xtpk_cross_price
+            xtpk_movement = return_dict['xtpk_movement']  # Add xtpk_movement
             base_min_price = return_dict['base_min_price']
             base_max_price = return_dict['base_max_price']
             aspr_min_price = return_dict['aspr_min_price']  # Add aspr_min_price
@@ -67,6 +69,7 @@ class LiveGraphUpdater:
             live_data['base_pamplitudes'].append(base_pamplitude)
             live_data['peak_travels'].append(peak_travel)  # Add this
             live_data['xtpk_cross_prices'].append(xtpk_cross_price)  # Add xtpk_cross_price
+            live_data['xtpk_movements'].append(xtpk_movement)  # Add xtpk_movement
             live_data['base_min_prices'].append(base_min_price)
             live_data['base_max_prices'].append(base_max_price)
             live_data['aspr_min_prices'].append(aspr_min_price)  # Add aspr_min_price to live data
@@ -89,6 +92,7 @@ class LiveGraphUpdater:
                 'base_mamplitude': base_mamplitude,
                 'base_pamplitude': base_pamplitude,
                 'peak_travel': peak_travel,
+                'xtpk_movement': xtpk_movement,  # Add xtpk_movement
                 'base_cross_direction': base_cross_direction,
                 'peak_cross_direction': peak_cross_direction,
                 'base_min_price': base_min_price,
@@ -123,6 +127,7 @@ class LiveGraphUpdater:
                 peak_cross_price_downs_list = list(live_data['peak_cross_price_downs'])  # Add this
                 peak_travels_list = list(live_data['peak_travels'])  # Add this
                 xtpk_cross_prices_list = list(live_data['xtpk_cross_prices'])  # Add xtpk_cross_price
+                xtpk_movements_list = list(live_data['xtpk_movements'])  # Add xtpk_movement
                 base_min_prices_list = list(live_data['base_min_prices'])
                 base_max_prices_list = list(live_data['base_max_prices'])
                 aspr_min_prices_list = list(live_data['aspr_min_prices'])
@@ -159,6 +164,7 @@ class LiveGraphUpdater:
                 peak_cross_downs_filtered = peak_cross_price_downs_list[start_idx:end_idx]  # Add this
                 peak_travels_filtered = peak_travels_list[start_idx:end_idx]  # Add this
                 xtpk_cross_prices_filtered = xtpk_cross_prices_list[start_idx:end_idx]  # Add xtpk_cross_price
+                xtpk_movements_filtered = xtpk_movements_list[start_idx:end_idx]  # Add xtpk_movement
                 base_mamplitudes_filtered = base_mamplitudes_list[start_idx:end_idx]
                 base_pamplitudes_filtered = base_pamplitudes_list[start_idx:end_idx]
                 base_min_prices_filtered = base_min_prices_list[start_idx:end_idx]
@@ -177,6 +183,7 @@ class LiveGraphUpdater:
                 peak_cross_downs_filtered = list(live_data['peak_cross_price_downs'])  # Add this
                 peak_travels_filtered = list(live_data['peak_travels'])  # Add this
                 xtpk_cross_prices_filtered = list(live_data['xtpk_cross_prices'])  # Add xtpk_cross_price
+                xtpk_movements_filtered = list(live_data['xtpk_movements'])  # Add xtpk_movement
                 base_mamplitudes_filtered = list(live_data['base_mamplitudes'])
                 base_pamplitudes_filtered = list(live_data['base_pamplitudes'])
                 base_min_prices_filtered = list(live_data['base_min_prices'])
@@ -338,6 +345,16 @@ class LiveGraphUpdater:
                 'marker': {'symbol': 'x', 'size': 12, 'color': 'darkorange', 'line': {'color': 'red', 'width': 2}}
             }
 
+            # XTPK Movement trace - Add this new trace
+            xtpk_movement_trace = {
+                'x': timestamps_str,
+                'y': xtpk_movements_filtered,
+                'mode': 'lines',
+                'name': 'XTPK Movement',
+                'line': {'color': 'lightgreen', 'width': 2},
+                'yaxis': 'y2'  # Use second y-axis for movement percentage
+            }
+
             # Layout
             layout = {
                 'title': f'Live Trading Data - EMA/TEMA Crossover Strategy ({len(timestamps_filtered)} points)',
@@ -352,8 +369,8 @@ class LiveGraphUpdater:
             return {
                 'data': [price_trace, base_ema_trace, base_tema_trace, base_cross_up_trace, base_cross_down_trace, 
                         peak_cross_up_trace, peak_cross_down_trace, peak_travel_trace, xtpk_cross_trace,
-                        base_min_price_trace, base_max_price_trace, aspr_min_price_trace, aspr_max_price_trace, 
-                        current_price_line, base_pamplitude_trace, base_mamplitude_trace],
+                        xtpk_movement_trace, base_min_price_trace, base_max_price_trace, aspr_min_price_trace, 
+                        aspr_max_price_trace, current_price_line, base_pamplitude_trace, base_mamplitude_trace],
                 'layout': layout
             }
             
