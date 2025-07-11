@@ -2,10 +2,11 @@ import subprocess
 import threading
 from tkinter import messagebox
 import pyttsx3
+import pandas as pd
 
 def say_nonblocking(text, voice=None):
     """
-    Say text on macOS using the 'say' command in a non-blocking way
+    Say text on macOS using the 'say' command in a non-blocking way 
     
     Parameters:
     -----------
@@ -61,7 +62,7 @@ class TimeBasedMovement:
             return 0.0
 
         # Get the price data for the last 5 minutes
-        range_ago = self.data[-1]["timestamp"] - self.range * 60
+        range_ago = self.data[-1]["timestamp"] - pd.Timedelta(minutes=self.range)
         relevant_data = [d for d in self.data if d["timestamp"] > range_ago]
 
         if not relevant_data:
