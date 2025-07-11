@@ -390,7 +390,7 @@ class Algo:
         self.peak_tema_calc = TimeBasedStreamingMA(peak_interval, ma_type='TEMA')
         self.peak_dema_calc = TimeBasedStreamingMA(peak_interval, ma_type='DEMA')
 
-        self.movement_calculator = TimeBasedMovement(range=5)
+        self.movement_calculator = TimeBasedMovement(range=2)
 
         # initialize the json that will hold timestamp price and ema values
         self.base_ema_values = []
@@ -543,9 +543,15 @@ class Algo:
                         #     peak_cross_price_dn = price
                         #     self.peak_cross_price_dn = peak_cross_price_dn
 
+
+        # Extreme peak: calculate movement of last 5 minutes
+        self.movement_calculator.add(timestamp, price)
+        xtpk_movement = abs(self.movement_calculator.calc())
+
         # Extreme peak: when price is dramatically going in one direction, set a following price at extreme peak distance
         xtpk_cross_price = None
-        if abs(self.xtpk_travel) > self.peak_travel_threshold:
+        # if abs(self.xtpk_travel) > self.xtpk_travel_threshold:
+        if xtpk_movement > self.xtpk_travel_threshold:
             if self.peak_travel > 0:  # if we are going up
                 ...
                 # if price > self.xtpk_price:
@@ -567,10 +573,7 @@ class Algo:
                                 self.xtpk_found = True
                                 print(f"{timestamp} XTPK: {xtpk_cross_price:.8f} Following: {self.xtpk_price_following:.8f}")
 
-        # Extreme peak: calculate movement
-        self.movement_calculator.add(timestamp, price)
-        print(timestamp)
-        xtpk_cross_price = self.movement_calculator.calc()
+
 
         # when aspr_tema crosses aspr_ema, detect the direction
         aspr_cross_direction = None
@@ -753,6 +756,7 @@ class Algo:
             'peak_cross_price_dn': peak_cross_price_dn,
             'peak_travel': abs(self.peak_travel),
             'xtpk_cross_price': xtpk_cross_price,
+            'xtpk_movement': xtpk_movement,
             'base_min_price': self.base_min_prices[-1],
             'base_max_price': self.base_max_prices[-1],
             'aspr_min_price': self.aspr_min_prices[-1],
