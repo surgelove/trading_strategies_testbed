@@ -220,10 +220,12 @@ class LiveGraphUpdater:
             price_trace = {
                 'x': timestamps_str,
                 'y': prices_filtered,
-                'mode': 'lines+markers',
+                # 'mode': 'lines+markers',
+                'mode': 'lines',
+                'connectgaps': False,
                 'name': 'Price',
                 'line': {'color': 'gray', 'width': 1, 'opacity': 0.5},
-                'marker': {'size': 3}
+                # 'marker': {'size': 3}
             }
             
             # EMA trace
@@ -231,6 +233,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': base_emas_filtered,
                 'mode': 'lines',
+                'connectgaps': False,
                 'name': 'Base EMA',
                 'line': {'color': 'blue', 'width': 2}
             }
@@ -240,6 +243,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': base_temas_filtered,
                 'mode': 'lines',
+                'connectgaps': False,
                 'name': 'Base TEMA',
                 'line': {'color': 'purple', 'width': 2}
             }
@@ -249,6 +253,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': base_cross_ups_filtered,
                 'mode': 'markers',
+                'connectgaps': False,
                 'name': 'Base Cross Up',
                 'marker': {'symbol': 'triangle-up', 'size': 10, 'color': 'green'}
             }
@@ -258,6 +263,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': base_cross_downs_filtered,
                 'mode': 'markers',
+                'connectgaps': False,
                 'name': 'Base Cross Down',
                 'marker': {'symbol': 'triangle-down', 'size': 10, 'color': 'red'}
             }
@@ -267,6 +273,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': peak_cross_ups_filtered,
                 'mode': 'markers',
+                'connectgaps': False,
                 'name': 'Peak Cross Up',
                 'marker': {'symbol': 'triangle-up', 'size': 8, 'color': 'lightgreen', 'line': {'color': 'green', 'width': 2}}
             }
@@ -276,6 +283,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': peak_cross_downs_filtered,
                 'mode': 'markers',
+                'connectgaps': False,
                 'name': 'Peak Cross Down',
                 'marker': {'symbol': 'triangle-down', 'size': 8, 'color': 'lightcoral', 'line': {'color': 'red', 'width': 2}}
             }
@@ -285,6 +293,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': peak_travels_filtered,
                 'mode': 'lines',
+                'connectgaps': False,
                 'name': 'Peak Travel',
                 'line': {'color': 'orange', 'width': 2},
                 'yaxis': 'y2'  # Use second y-axis for travel percentage
@@ -295,6 +304,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': base_min_prices_filtered,
                 'mode': 'markers',
+                'connectgaps': False,
                 'name': 'Base Min Price',
                 'marker': {'symbol': 'star', 'size': 10, 'color': 'darkred', 'opacity': 1}
             }
@@ -304,6 +314,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': base_max_prices_filtered,
                 'mode': 'markers',
+                'connectgaps': False,
                 'name': 'Base Max Price',
                 'marker': {'symbol': 'star', 'size': 10, 'color': 'darkgreen', 'opacity': 1}
             }
@@ -312,6 +323,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': aspr_min_prices_filtered,
                 'mode': 'markers',
+                'connectgaps': False,
                 'name': 'Aspr Min Price',
                 'marker': {'symbol': 'diamond', 'size': 8, 'color': 'darkred', 'opacity': 1}
             }
@@ -321,6 +333,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': aspr_max_prices_filtered,
                 'mode': 'markers',
+                'connectgaps': False,
                 'name': 'Aspr Max Price',
                 'marker': {'symbol': 'diamond', 'size': 8, 'color': 'darkgreen', 'opacity': 1}
             }
@@ -331,6 +344,7 @@ class LiveGraphUpdater:
                 'x': [timestamps_str[0], timestamps_str[-1]] if timestamps_str else [],
                 'y': [current_price, current_price],
                 'mode': 'lines',
+                'connectgaps': False,
                 'name': 'Current Price Line',
                 'line': {'color': 'gray', 'width': 1, 'dash': 'dash'},
                 'hovertemplate': f'Current Price: {current_price:.5f}<extra></extra>'
@@ -341,6 +355,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': base_mamplitudes_filtered,
                 'mode': 'lines',
+                'connectgaps': False,
                 'name': 'Base Mamplitude',
                 'line': {'color': 'orange', 'width': 1, 'opacity': 0.1},
                 'yaxis': 'y2'
@@ -351,6 +366,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': base_pamplitudes_filtered,
                 'mode': 'lines',
+                'connectgaps': False,
                 'name': 'Base Pamplitude',
                 'line': {'color': 'lightblue', 'width': 1, 'opacity': 0.1},
                 'yaxis': 'y2'
@@ -360,6 +376,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': xtpk_cross_price_ups_filtered,
                 'mode': 'markers',
+                'connectgaps': False,
                 'name': 'XTPK Cross Price Up',
                 'marker': {'symbol': 'triangle-up', 'size': 8, 'color': 'lightgreen', 'line': {'color': 'green', 'width': 2}}
             }
@@ -369,6 +386,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': xtpk_cross_price_dns_filtered,
                 'mode': 'markers',
+                'connectgaps': False,
                 'name': 'XTPK Cross Price Down',
                 'marker': {'symbol': 'triangle-down', 'size': 8, 'color': 'lightcoral', 'line': {'color': 'red', 'width': 2}}
             }
@@ -378,6 +396,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': xtpk_movements_filtered,
                 'mode': 'lines',
+                'connectgaps': False,
                 'name': 'XTPK Movement',
                 'line': {'color': 'lightgreen', 'width': 2},
                 'yaxis': 'y2'  # Use second y-axis for movement percentage
@@ -388,6 +407,7 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': xtpk_price_dn_followings_filtered,
                 'mode': 'lines',
+                'connectgaps': False,
                 'name': 'XTPK Price Following Down',
                 'line': {'color': 'purple', 'width': 3}
             }
@@ -397,32 +417,26 @@ class LiveGraphUpdater:
                 'x': timestamps_str,
                 'y': xtpk_price_up_followings_filtered,
                 'mode': 'lines',
+                'connectgaps': False,
                 'name': 'XTPK Price Following Up',
                 'line': {'color': 'orange', 'width': 3}
             }
-
-            # # TEMA trace
-            # base_tema_trace = {
-            #     'x': timestamps_str,
-            #     'y': base_temas_filtered,
-            #     'mode': 'lines',
-            #     'name': 'Base TEMA',
-            #     'line': {'color': 'purple', 'width': 2}
-            # }
 
             # Layout
             layout = {
                 'title': f'Live Trading Data - EMA/TEMA Crossover Strategy ({len(timestamps_filtered)} points)',
                 'height': 600,
-                'showlegend': True,
-                'hovermode': 'x unified',
+                'showlegend': False,
+                # 'hovermode': 'x unified',
                 'xaxis': {
                     'title': 'Date & Time',
-                    'tickangle': 45,  # Rotate labels to prevent overlap
-                    'tickformat': '%Y-%m-%d<br>%H:%M:%S'  # Format for better readability
+                    # 'tickangle': 45,  # Rotate labels to prevent overlap
+                    'tickformat': '%Y-%m-%d<br>%H:%M:%S',  # Format for better readability
+                    'showgrid': False,
+                    'nticks': 5
                 },
-                'yaxis': {'title': 'Price', 'side': 'left'},
-                'yaxis2': {'title': 'base_mamplitude %', 'side': 'right', 'overlaying': 'y'},
+                'yaxis': {'title': 'Price', 'side': 'left', 'showgrid': False},
+                'yaxis2': {'title': 'base_mamplitude %', 'side': 'right', 'overlaying': 'y', 'showgrid': False},
             }
             
             return {

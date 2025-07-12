@@ -563,7 +563,7 @@ class Algo:
 
         self.xtpk_movement_threshold = 0.04
         self.xtpk_travel_threshold = 0.05
-        self.xtpk_distance = 2
+        self.xtpk_distance = 4
         
         # Extreme peak: when price is dramatically going in one direction, set a following price at extreme peak distance
         xtpk_cross_price_up = None
