@@ -246,25 +246,25 @@
             <h3>📈 Data Series Visibility</h3>
             <div class="filter-options">
                 <label><input type="checkbox" data-series="Price" checked> Price</label>
-                <label><input type="checkbox" data-series="Base EMA" checked> Base EMA</label>
-                <label><input type="checkbox" data-series="Base TEMA" checked> Base TEMA</label>
-                <label><input type="checkbox" data-series="Base Cross Up" checked> Base Cross Up</label>
-                <label><input type="checkbox" data-series="Base Cross Down" checked> Base Cross Down</label>
-                <label><input type="checkbox" data-series="Peak Cross Up" checked> Peak Cross Up</label>
-                <label><input type="checkbox" data-series="Peak Cross Down" checked> Peak Cross Down</label>
-                <label><input type="checkbox" data-series="Peak Travel" checked> Peak Travel</label>
-                <label><input type="checkbox" data-series="XTPK Cross Price Up" checked> XTPK Cross Price Up</label>
-                <label><input type="checkbox" data-series="XTPK Cross Price Down" checked> XTPK Cross Price Down</label>
-                <label><input type="checkbox" data-series="XTPK Movement" checked> XTPK Movement</label>
-                <label><input type="checkbox" data-series="XTPK Price Following Down" checked> XTPK Price Following Down</label>
-                <label><input type="checkbox" data-series="XTPK Price Following Up" checked> XTPK Price Following Up</label>
-                <label><input type="checkbox" data-series="Base Min Price" checked> Base Min Price</label>
-                <label><input type="checkbox" data-series="Base Max Price" checked> Base Max Price</label>
-                <label><input type="checkbox" data-series="Aspr Min Price" checked> Aspr Min Price</label>
-                <label><input type="checkbox" data-series="Aspr Max Price" checked> Aspr Max Price</label>
-                <label><input type="checkbox" data-series="Current Price Line" checked> Current Price Line</label>
-                <label><input type="checkbox" data-series="Base Mamplitude" checked> Base Mamplitude</label>
-                <label><input type="checkbox" data-series="Base Pamplitude" checked> Base Pamplitude</label>
+                <label><input type="checkbox" data-series="Base EMA"> Base EMA</label>
+                <label><input type="checkbox" data-series="Base TEMA"> Base TEMA</label>
+                <label><input type="checkbox" data-series="Base Cross Up"> Base Cross Up</label>
+                <label><input type="checkbox" data-series="Base Cross Down"> Base Cross Down</label>
+                <label><input type="checkbox" data-series="Peak Cross Up"> Peak Cross Up</label>
+                <label><input type="checkbox" data-series="Peak Cross Down"> Peak Cross Down</label>
+                <label><input type="checkbox" data-series="Peak Travel"> Peak Travel</label>
+                <label><input type="checkbox" data-series="XTPK Cross Price Up"> XTPK Cross Price Up</label>
+                <label><input type="checkbox" data-series="XTPK Cross Price Down"> XTPK Cross Price Down</label>
+                <label><input type="checkbox" data-series="XTPK Movement"> XTPK Movement</label>
+                <label><input type="checkbox" data-series="XTPK Price Following Down"> XTPK Price Following Down</label>
+                <label><input type="checkbox" data-series="XTPK Price Following Up"> XTPK Price Following Up</label>
+                <label><input type="checkbox" data-series="Base Min Price"> Base Min Price</label>
+                <label><input type="checkbox" data-series="Base Max Price"> Base Max Price</label>
+                <label><input type="checkbox" data-series="Aspr Min Price"> Aspr Min Price</label>
+                <label><input type="checkbox" data-series="Aspr Max Price"> Aspr Max Price</label>
+                <label><input type="checkbox" data-series="Current Price Line"> Current Price Line</label>
+                <label><input type="checkbox" data-series="Base Mamplitude"> Base Mamplitude</label>
+                <label><input type="checkbox" data-series="Base Pamplitude"> Base Pamplitude</label>
             </div>
             <button class="btn" onclick="applyVisibilityFilters()">Apply Filters</button>
             <button class="btn" onclick="resetVisibilityFilters()">Show All</button>
@@ -291,25 +291,25 @@
         // Store visibility preferences - fix series names to match trace names
         let seriesVisibility = {
             'Price': true,
-            'Base EMA': true,
-            'Base TEMA': true,
-            'Base Cross Up': true,
-            'Base Cross Down': true,
-            'Peak Cross Up': true,
-            'Peak Cross Down': true,
-            'Peak Travel': true,
-            'XTPK Cross Price Up': true,
-            'XTPK Cross Price Down': true,
-            'XTPK Movement': true,
-            'XTPK Price Following Down': true,
-            'XTPK Price Following Up': true,
-            'Base Min Price': true,
-            'Base Max Price': true,
-            'Aspr Min Price': true,
-            'Aspr Max Price': true,
-            'Current Price Line': true,
-            'Base Mamplitude': true,
-            'Base Pamplitude': true
+            'Base EMA': false,
+            'Base TEMA': false,
+            'Base Cross Up': false,
+            'Base Cross Down': false,
+            'Peak Cross Up': false,
+            'Peak Cross Down': false,
+            'Peak Travel': false,
+            'XTPK Cross Price Up': false,
+            'XTPK Cross Price Down': false,
+            'XTPK Movement': false,
+            'XTPK Price Following Down': false,
+            'XTPK Price Following Up': false,
+            'Base Min Price': false,
+            'Base Max Price': false,
+            'Aspr Min Price': false,
+            'Aspr Max Price': false,
+            'Current Price Line': false,
+            'Base Mamplitude': false,
+            'Base Pamplitude': false
         };
         
         function updateStats(data) {
