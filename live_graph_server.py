@@ -94,7 +94,7 @@ class LiveGraphUpdater:
 
             # Store latest data for API endpoint
             self.latest_data = {
-                'timestamp': timestamp.strftime('%H:%M:%S'),
+                'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                 'price': price,
                 'base_ema': base_ema,
                 'base_tema': base_tema,
@@ -213,7 +213,8 @@ class LiveGraphUpdater:
                 return None
                 
             # Convert timestamps to strings for JSON serialization
-            timestamps_str = [t.strftime('%H:%M:%S') for t in timestamps_filtered]
+            # timestamps_str = [t.strftime('%H:%M:%S') for t in timestamps_filtered]
+            timestamps_str = [t.strftime('%Y-%m-%d %H:%M:%S') for t in timestamps_filtered]
             
             # Main price chart
             price_trace = {
@@ -415,7 +416,11 @@ class LiveGraphUpdater:
                 'height': 600,
                 'showlegend': True,
                 'hovermode': 'x unified',
-                'xaxis': {'title': 'Time'},
+                'xaxis': {
+                    'title': 'Date & Time',
+                    'tickangle': 45,  # Rotate labels to prevent overlap
+                    'tickformat': '%Y-%m-%d<br>%H:%M:%S'  # Format for better readability
+                },
                 'yaxis': {'title': 'Price', 'side': 'left'},
                 'yaxis2': {'title': 'base_mamplitude %', 'side': 'right', 'overlaying': 'y'},
             }
@@ -480,8 +485,8 @@ def get_status():
     return jsonify({
         'status': 'running',
         'data_points': len(live_data['timestamps']),
-        'latest_timestamp': live_data['timestamps'][-1].strftime('%H:%M:%S') if live_data['timestamps'] else None,
-        'oldest_timestamp': live_data['timestamps'][0].strftime('%H:%M:%S') if live_data['timestamps'] else None,
+        'latest_timestamp': live_data['timestamps'][-1].strftime('%Y-%m-%d %H:%M:%S') if live_data['timestamps'] else None,
+        'oldest_timestamp': live_data['timestamps'][0].strftime('%Y-%m-%d %H:%M:%S') if live_data['timestamps'] else None,
         'time_span_minutes': ((live_data['timestamps'][-1] - live_data['timestamps'][0]).total_seconds() / 60) if len(live_data['timestamps']) > 1 else 0
     })
 
