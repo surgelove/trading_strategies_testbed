@@ -813,7 +813,5 @@ class Algo:
         }
 
         return base_take, return_dict
-
-        return base_take, return_dict
         
 
