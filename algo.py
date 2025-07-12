@@ -554,6 +554,7 @@ class Algo:
                         #     self.peak_cross_price_dn = peak_cross_price_dn
         # endregion peak
 
+        # region extreme peak
         # Extreme peak: calculate movement of last 5 minutes
         self.movement_calculator.add(timestamp, price)
         movement = self.movement_calculator.calc()
@@ -618,7 +619,9 @@ class Algo:
             # self.xtpk_price_dn_following = None
             # self.xtpk_price_dn_following_crossed = False
             ... # peak direction changed to down
+        # endregion extreme peak        
 
+        # region asperity
         # when aspr_tema crosses aspr_ema, detect the direction
         aspr_cross_direction = None
         if len(self.aspr_ema_values) > 1 and len(self.aspr_tema_values) > 1:
@@ -664,9 +667,9 @@ class Algo:
                 self.aspr_max_price = None  # Reset max price after cross up
         else:
             self.aspr_max_prices.append(None)
-
-        # ---------------------------------------------
+        # endregion asperity
         
+        # region base
         # Calculate the amplitude between EMA and TEMA
         base_mamplitude = None
         base_mamplitude_temp = round(abs(base_ema - base_tema), precision)  # Calculate the amplitude between EMA and TEMA
@@ -783,6 +786,7 @@ class Algo:
             self.base_max_price = None  # Reset max price after cross up
         else:
             self.base_max_prices.append(None)
+        # endregion base
 
         return_dict = {
             'timestamp': timestamp,
@@ -808,7 +812,7 @@ class Algo:
             'base_max_price': self.base_max_prices[-1],
             'aspr_min_price': self.aspr_min_prices[-1],
             'aspr_max_price': self.aspr_max_prices[-1],
-            'Travel': base_travel,
+            'base_travel': base_travel,
             # 'Take': take
         }
 
